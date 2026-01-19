@@ -4,6 +4,7 @@ import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { useConvex } from 'convex/react';
 import { useAuth } from '@clerk/clerk-expo';
 import { useDatabaseReady } from '@/db/provider';
+import { useSyncSettings } from '@/contexts/sync-settings-context';
 import { syncAll, SyncResult } from '@/sync/sync-engine';
 import { subscribeToItemChanges, getPendingChanges } from '@/db/items-repository';
 
@@ -24,6 +25,7 @@ export function useSync(): SyncState & {
   const convex = useConvex();
   const { userId } = useAuth();
   const isDbReady = useDatabaseReady();
+  const { isCloudSyncEnabled } = useSyncSettings();
 
   const [state, setState] = useState<SyncState>({
     isSyncing: false,
@@ -36,17 +38,60 @@ export function useSync(): SyncState & {
   const syncTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isMountedRef = useRef(true);
+  const isOnlineRef = useRef(state.isOnline);
+  const isSyncingRef = useRef(state.isSyncing);
+  const userIdRef = useRef<string | null>(userId ?? null);
+  const isDbReadyRef = useRef(isDbReady);
+
+  useEffect(() => {
+    isOnlineRef.current = state.isOnline;
+  }, [state.isOnline]);
+
+  useEffect(() => {
+    isSyncingRef.current = state.isSyncing;
+  }, [state.isSyncing]);
+
+  useEffect(() => {
+    userIdRef.current = userId ?? null;
+  }, [userId]);
+
+  useEffect(() => {
+    isDbReadyRef.current = isDbReady;
+  }, [isDbReady]);
 
   // Perform sync
   const performSync = useCallback(async (): Promise<SyncResult | null> => {
-    if (!userId || !isDbReady || !state.isOnline || state.isSyncing) {
+    const currentUserId = userIdRef.current;
+    const currentIsDbReady = isDbReadyRef.current;
+    const currentIsOnline = isOnlineRef.current;
+    const currentIsSyncing = isSyncingRef.current;
+
+    console.log('[useSync] performSync called', {
+      userId: !!currentUserId,
+      isDbReady: currentIsDbReady,
+      isOnline: currentIsOnline,
+      isSyncing: currentIsSyncing,
+      cloudSyncEnabled: isCloudSyncEnabled,
+    });
+    
+    // Skip sync if cloud sync is disabled
+    if (!isCloudSyncEnabled) {
+      console.log('[useSync] performSync skipped - cloud sync disabled');
+      return null;
+    }
+    
+    if (!currentUserId || !currentIsDbReady || !currentIsOnline || currentIsSyncing) {
+      console.log('[useSync] performSync skipped - conditions not met');
       return null;
     }
 
+    console.log('[useSync] Starting sync...');
+    isSyncingRef.current = true;
     setState((prev) => ({ ...prev, isSyncing: true, lastError: null }));
 
     try {
-      const result = await syncAll(convex, userId);
+      const result = await syncAll(convex, currentUserId);
+      console.log('[useSync] Sync completed:', result);
 
       if (isMountedRef.current) {
         setState((prev) => ({
@@ -68,8 +113,10 @@ export function useSync(): SyncState & {
         }));
       }
       return null;
+    } finally {
+      isSyncingRef.current = false;
     }
-  }, [convex, userId, isDbReady, state.isOnline, state.isSyncing]);
+  }, [convex, isCloudSyncEnabled]);
 
   // Debounced sync on data change
   const scheduleDebouncedSync = useCallback(() => {

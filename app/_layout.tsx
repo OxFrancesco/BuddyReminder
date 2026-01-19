@@ -8,6 +8,7 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AuthProvider from '@/components/auth-provider';
 import { ThemeProvider as CustomThemeProvider } from '@/contexts/theme-context';
+import { SyncSettingsProvider } from '@/contexts/sync-settings-context';
 import { DatabaseProvider } from '@/db/provider';
 import { SyncProvider } from '@/components/sync-provider';
 import {
@@ -47,13 +48,15 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <CustomThemeProvider>
-        <DatabaseProvider>
-          <AuthProvider>
-            <SyncProvider>
-              <RootLayoutNav />
-            </SyncProvider>
-          </AuthProvider>
-        </DatabaseProvider>
+        <SyncSettingsProvider>
+          <DatabaseProvider>
+            <AuthProvider>
+              <SyncProvider>
+                <RootLayoutNav />
+              </SyncProvider>
+            </AuthProvider>
+          </DatabaseProvider>
+        </SyncSettingsProvider>
       </CustomThemeProvider>
     </GestureHandlerRootView>
   );

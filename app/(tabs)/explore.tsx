@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, ScrollView } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView, Switch } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useUser, useClerk } from '@clerk/clerk-expo';
 import { Image } from 'expo-image';
@@ -9,6 +9,7 @@ import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useTheme } from '@/contexts/theme-context';
+import { useSyncSettings } from '@/contexts/sync-settings-context';
 
 export default function TabTwoScreen() {
   const insets = useSafeAreaInsets();
@@ -16,6 +17,7 @@ export default function TabTwoScreen() {
   const { signOut } = useClerk();
   const colorScheme = useColorScheme();
   const { themeMode, setThemeMode } = useTheme();
+  const { syncMode, setSyncMode } = useSyncSettings();
   const colors = Colors[colorScheme ?? 'light'];
   
   return (
@@ -60,6 +62,25 @@ export default function TabTwoScreen() {
                 Dark
               </ThemedText>
             </TouchableOpacity>
+          </View>
+        </ThemedView>
+
+        <ThemedView style={[styles.settingsSection, { backgroundColor: colors.backgroundSecondary, borderColor: colors.icon }]}>
+          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Data Sync</ThemedText>
+          
+          <View style={styles.syncOption}>
+            <View style={styles.syncInfo}>
+              <ThemedText type="defaultSemiBold">Cloud Sync</ThemedText>
+              <ThemedText style={[styles.syncDescription, { color: colors.icon }]}>
+                {syncMode === 'cloud' ? 'Syncing with Convex' : 'Local storage only'}
+              </ThemedText>
+            </View>
+            <Switch
+              value={syncMode === 'cloud'}
+              onValueChange={(value) => setSyncMode(value ? 'cloud' : 'local')}
+              trackColor={{ false: colors.muted, true: colors.tint }}
+              thumbColor="#fff"
+            />
           </View>
         </ThemedView>
 
@@ -141,6 +162,18 @@ const styles = StyleSheet.create({
   themeButtonText: {
     fontSize: 14,
     fontWeight: '500',
+  },
+  syncOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  syncInfo: {
+    flex: 1,
+  },
+  syncDescription: {
+    fontSize: 12,
+    marginTop: 2,
   },
   section: {
     marginTop: 24,
