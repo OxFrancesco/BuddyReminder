@@ -2,6 +2,41 @@
 
 ## 2026-01-19
 
+### UI/UX Polish
+- Removed all emojis from the app (replaced with text labels and SF Symbols)
+- Fixed duplicate type text in item details (was showing "Reminder reminder")
+- Added native date/time picker to reschedule modal alongside natural language input
+- Improved reschedule modal with two input methods: natural language and visual pickers
+- Added reschedule option directly in item detail settings card
+
+### Swipe Gestures
+- Replaced checkboxes with swipe gestures for cleaner UX
+- Swipe right → Mark as done (archives item)
+- Swipe left → Reschedule (reminders only)
+- Added animated swipe actions with icons and labels
+- Created gestures help screen accessible from profile
+- Added sign out button to profile
+
+### Quick Actions for Items
+- Added checkbox to mark items as done (archives them)
+- Added reschedule button for reminders (calendar icon)
+- Created reschedule modal with natural language input
+- Added `updateItem` mutation for updating trigger times
+- Checkbox appears on all items for quick completion
+- Reschedule button only appears on reminders
+
+### Natural Language Date/Time Parsing
+- Integrated `chrono-node` for robust NLP parsing
+- Now supports complex date/time expressions:
+  - "tomorrow at 3pm"
+  - "next Monday at 2:30pm"
+  - "in 2 hours"
+  - "Jan 25 at 9am"
+  - "tonight at 8pm"
+  - "next week"
+- Automatically extracts date/time and cleans title
+- Forward date parsing (assumes future dates)
+
 ### UI/UX Improvements
 - Fixed safe area handling for items list to prevent content appearing under dynamic island/notch
 - Created comprehensive item edit modal with title and body editing

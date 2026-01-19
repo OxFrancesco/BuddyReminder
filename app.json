@@ -47,7 +47,8 @@
           "color": "#007AFF",
           "sounds": []
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

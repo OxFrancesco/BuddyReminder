@@ -1,27 +1,59 @@
+import { useEffect } from 'react';
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import AuthProvider from '@/components/auth-provider';
+import { ThemeProvider as CustomThemeProvider } from '@/contexts/theme-context';
+import { DatabaseProvider } from '@/db/provider';
+import { SyncProvider } from '@/components/sync-provider';
+import {
+  setupNotificationChannels,
+  setupNotificationResponseHandler,
+} from '@/lib/notification-manager';
 
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-export default function RootLayout() {
+function RootLayoutNav() {
   const colorScheme = useColorScheme();
 
+  useEffect(() => {
+    // Setup notification channels (Android)
+    setupNotificationChannels();
+
+    // Setup notification tap handler
+    const cleanup = setupNotificationResponseHandler();
+    return cleanup;
+  }, []);
+
   return (
-    <AuthProvider>
-      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-        <Stack>
-          <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
-        </Stack>
-        <StatusBar style="auto" />
-      </ThemeProvider>
-    </AuthProvider>
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Item Details' }} />
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <CustomThemeProvider>
+        <DatabaseProvider>
+          <AuthProvider>
+            <SyncProvider>
+              <RootLayoutNav />
+            </SyncProvider>
+          </AuthProvider>
+        </DatabaseProvider>
+      </CustomThemeProvider>
+    </GestureHandlerRootView>
   );
 }

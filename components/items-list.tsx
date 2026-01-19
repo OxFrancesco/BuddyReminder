@@ -1,37 +1,35 @@
-import { useQuery } from 'convex/react';
-import { FlatList, StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { FlatList, StyleSheet, View, TouchableOpacity, Text, Alert, Animated } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { BlurView } from 'expo-blur';
 import { router } from 'expo-router';
-import { api } from '../convex/_generated/api';
+import { Swipeable } from 'react-native-gesture-handler';
 import { ThemedView } from './themed-view';
 import { ThemedText } from './themed-text';
+import { IconSymbol } from './ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useAuth } from '@clerk/clerk-expo';
-
-interface Item {
-  _id: string;
-  _creationTime: number;
-  type: 'note' | 'reminder' | 'task';
-  title: string;
-  body?: string;
-  status: 'open' | 'done' | 'archived';
-  triggerAt?: number;
-}
+import { useState } from 'react';
+import RescheduleModal from './reschedule-modal';
+import { useLocalItems, useLocalItemMutations } from '@/hooks/use-local-items';
+import { LocalItem } from '@/db/types';
+import { cancelItemNotification } from '@/lib/notification-manager';
 
 export default function ItemsList() {
   const { isSignedIn, isLoaded } = useAuth();
-  const items = useQuery(api.items.getUserItems, isSignedIn ? {} : "skip");
+  const { items, isLoading } = useLocalItems();
+  const { updateItemStatus } = useLocalItemMutations();
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
   const insets = useSafeAreaInsets();
+  const [rescheduleItemId, setRescheduleItemId] = useState<string | null>(null);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'note': return '📝';
-      case 'reminder': return '⏰';
-      case 'task': return '🤖';
-      default: return '📝';
+      case 'note': return 'doc.text';
+      case 'reminder': return 'bell';
+      case 'task': return 'cpu';
+      default: return 'doc.text';
     }
   };
 
@@ -50,42 +48,120 @@ export default function ItemsList() {
     return date.toLocaleString();
   };
 
-  const renderItem = ({ item }: { item: Item }) => (
-    <TouchableOpacity 
-      style={[styles.itemContainer, { borderColor: colors.icon }]}
-      onPress={() => router.push(`/modal?itemId=${item._id}`)}
+  const handleComplete = async (item: LocalItem) => {
+    try {
+      // Cancel any notification for this item
+      if (item.notificationId) {
+        await cancelItemNotification(item.id, item.notificationId);
+      }
+      await updateItemStatus(item.id, 'archived');
+    } catch (error) {
+      Alert.alert('Error', 'Failed to archive item');
+    }
+  };
+
+  const handleReschedule = (itemId: string) => {
+    setRescheduleItemId(itemId);
+  };
+
+  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+    const scale = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [1, 0],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View style={[styles.swipeAction, styles.completeAction, { transform: [{ scale }] }]}>
+        <IconSymbol name="checkmark.circle.fill" size={28} color="white" />
+        <Text style={styles.swipeActionText}>Done</Text>
+      </Animated.View>
+    );
+  };
+
+  const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>, item: LocalItem) => {
+    if (item.type !== 'reminder') return null;
+
+    const scale = dragX.interpolate({
+      inputRange: [0, 100],
+      outputRange: [0, 1],
+      extrapolate: 'clamp',
+    });
+
+    return (
+      <Animated.View style={[styles.swipeAction, styles.rescheduleAction, { transform: [{ scale }] }]}>
+        <IconSymbol name="calendar" size={28} color="white" />
+        <Text style={styles.swipeActionText}>Reschedule</Text>
+      </Animated.View>
+    );
+  };
+
+  const renderItem = ({ item }: { item: LocalItem }) => (
+    <Swipeable
+      renderRightActions={(progress, dragX) => renderRightActions(progress, dragX)}
+      renderLeftActions={(progress, dragX) => renderLeftActions(progress, dragX, item)}
+      onSwipeableRightOpen={() => handleComplete(item)}
+      onSwipeableLeftOpen={() => item.type === 'reminder' && handleReschedule(item.id)}
+      overshootRight={false}
+      overshootLeft={false}
     >
-      <ThemedText type="defaultSemiBold" style={styles.title}>
-        {item.title}
-      </ThemedText>
-      
-      {item.body && (
-        <ThemedText style={styles.body} numberOfLines={2}>
-          {item.body}
-        </ThemedText>
-      )}
-      
-      {item.triggerAt && (
-        <Text style={[styles.triggerTime, { color: getTypeColor(item.type) }]}>
-          ⏰ {formatTime(item.triggerAt)}
-        </Text>
-      )}
-      
-      <View style={styles.itemFooter}>
-        <Text style={[styles.createdTime, { color: colors.icon }]}>
-          Created {new Date(item._creationTime).toLocaleDateString()}
-        </Text>
-        <View style={styles.typeIndicator}>
-          <Text style={styles.typeIcon}>{getTypeIcon(item.type)}</Text>
-          <Text style={[styles.typeText, { color: getTypeColor(item.type) }]}>
-            {item.type}
-          </Text>
-        </View>
-      </View>
-    </TouchableOpacity>
+      <TouchableOpacity
+        style={styles.itemContainer}
+        onPress={() => router.push(`/modal?itemId=${item.id}`)}
+      >
+        <BlurView 
+          intensity={20}
+          tint={colorScheme}
+          style={[
+            styles.glassCard, 
+            {
+              backgroundColor: colorScheme === 'dark' 
+                ? 'rgba(255, 255, 255, 0.1)' 
+                : 'rgba(255, 255, 255, 0.7)',
+              borderColor: item.isDailyHighlight 
+                ? '#FFD700'
+                : colorScheme === 'dark'
+                ? 'rgba(255, 255, 255, 0.2)'
+                : 'rgba(0, 0, 0, 0.1)',
+              borderWidth: item.isDailyHighlight ? 2 : 1,
+              shadowColor: item.isDailyHighlight ? '#FFD700' : colors.text,
+              shadowOpacity: item.isDailyHighlight ? 0.3 : 0.15,
+            }
+          ]}
+        >
+          <View style={styles.itemContent}>
+            <View style={styles.itemHeader}>
+              <View style={[styles.typeIndicator, { backgroundColor: getTypeColor(item.type) }]}>
+                <IconSymbol name={getTypeIcon(item.type)} size={20} color="white" />
+              </View>
+              <View style={styles.titleContainer}>
+                <View style={styles.titleRow}>
+                  <ThemedText type="defaultSemiBold" style={styles.title} numberOfLines={2}>
+                    {item.title}
+                  </ThemedText>
+                  {item.isDailyHighlight && (
+                    <IconSymbol name="sparkles" size={16} color="#FFD700" />
+                  )}
+                </View>
+                {item.triggerAt && (
+                  <Text style={[styles.triggerTime, { color: colors.icon }]}>
+                    {formatTime(item.triggerAt)}
+                  </Text>
+                )}
+                {item.body && (
+                  <ThemedText style={styles.body} numberOfLines={1}>
+                    {item.body}
+                  </ThemedText>
+                )}
+              </View>
+            </View>
+          </View>
+        </BlurView>
+      </TouchableOpacity>
+    </Swipeable>
   );
 
-  if (!isLoaded || items === undefined) {
+  if (!isLoaded || isLoading) {
     return (
       <ThemedView style={styles.loadingContainer}>
         <ThemedText>Loading...</ThemedText>
@@ -104,7 +180,7 @@ export default function ItemsList() {
   if (items.length === 0) {
     return (
       <ThemedView style={styles.emptyContainer}>
-        <Text style={styles.emptyIcon}>📝</Text>
+        <IconSymbol name="doc.text" size={48} color={colors.icon} style={styles.emptyIcon} />
         <ThemedText type="subtitle" style={styles.emptyTitle}>
           No items yet
         </ThemedText>
@@ -119,9 +195,18 @@ export default function ItemsList() {
     <FlatList
       data={items}
       renderItem={renderItem}
-      keyExtractor={(item) => item._id}
+      keyExtractor={(item) => item.id}
       contentContainerStyle={[styles.listContainer, { paddingTop: insets.top + 16 }]}
       showsVerticalScrollIndicator={false}
+      removeClippedSubviews={true}
+      maxToRenderPerBatch={10}
+      windowSize={10}
+      ListFooterComponent={
+        <RescheduleModal
+          itemId={rescheduleItemId}
+          onClose={() => setRescheduleItemId(null)}
+        />
+      }
     />
   );
 }
@@ -139,7 +224,6 @@ const styles = StyleSheet.create({
     padding: 40,
   },
   emptyIcon: {
-    fontSize: 48,
     marginBottom: 16,
   },
   emptyTitle: {
@@ -155,47 +239,78 @@ const styles = StyleSheet.create({
     paddingBottom: 120, // Space for FAB
   },
   itemContainer: {
-    backgroundColor: 'transparent',
-    borderWidth: 1,
-    borderRadius: 12,
-    padding: 16,
     marginBottom: 12,
   },
-  itemFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+  swipeAction: {
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
+    width: 80,
+    height: '100%',
+    borderRadius: 16,
+  },
+  completeAction: {
+    backgroundColor: '#34C759',
+    marginLeft: 8,
+  },
+  rescheduleAction: {
+    backgroundColor: '#007AFF',
+    marginRight: 8,
+  },
+  swipeActionText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    marginTop: 4,
+  },
+  glassCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 16,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+    overflow: 'hidden',
+  },
+  itemContent: {
+    gap: 12,
+  },
+  itemHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
   },
   typeIndicator: {
-    flexDirection: 'row',
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   typeIcon: {
-    fontSize: 14,
-    marginRight: 6,
+    fontSize: 18,
   },
-  typeText: {
-    fontSize: 12,
-    fontWeight: '500',
-    textTransform: 'capitalize',
+  titleContainer: {
+    flex: 1,
+    gap: 4,
   },
-  statusText: {
-    fontSize: 12,
-    textTransform: 'capitalize',
+  titleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   title: {
-    marginBottom: 4,
-  },
-  body: {
-    marginBottom: 8,
-    opacity: 0.8,
+    fontSize: 16,
+    lineHeight: 22,
   },
   triggerTime: {
     fontSize: 12,
-    marginBottom: 4,
+    fontWeight: '500',
   },
-  createdTime: {
-    fontSize: 11,
+  body: {
+    fontSize: 14,
+    opacity: 0.7,
+    lineHeight: 18,
   },
 });

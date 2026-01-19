@@ -19,6 +19,7 @@ export const getUserItems = query({
       body: v.optional(v.string()),
       status: v.union(v.literal("open"), v.literal("done"), v.literal("archived")),
       isPinned: v.optional(v.boolean()),
+      isDailyHighlight: v.optional(v.boolean()),
       triggerAt: v.optional(v.number()),
       timezone: v.optional(v.string()),
       repeatRule: v.optional(v.string()),
@@ -35,6 +36,7 @@ export const getUserItems = query({
       })),
       executionPolicy: v.optional(v.union(v.literal("manual"), v.literal("auto"))),
       agentRunIds: v.optional(v.array(v.string())),
+      localId: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -147,13 +149,14 @@ export const createItem = mutation({
 });
 
 /**
- * Update an item's content
+ * Update an item
  */
 export const updateItem = mutation({
   args: {
     itemId: v.id("items"),
     title: v.optional(v.string()),
     body: v.optional(v.string()),
+    triggerAt: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -183,6 +186,7 @@ export const updateItem = mutation({
     const updates: any = {};
     if (args.title !== undefined) updates.title = args.title;
     if (args.body !== undefined) updates.body = args.body;
+    if (args.triggerAt !== undefined) updates.triggerAt = args.triggerAt;
 
     await ctx.db.patch(args.itemId, updates);
     return null;
@@ -265,6 +269,47 @@ export const toggleItemPin = mutation({
 
     await ctx.db.patch(args.itemId, {
       isPinned: args.isPinned,
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Toggle item daily highlight status
+ */
+export const toggleItemDailyHighlight = mutation({
+  args: {
+    itemId: v.id("items"),
+    isDailyHighlight: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+
+    if (item.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.db.patch(args.itemId, {
+      isDailyHighlight: args.isDailyHighlight,
     });
 
     return null;

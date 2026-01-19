@@ -16,7 +16,8 @@ export default defineSchema({
     body: v.optional(v.string()),
     status: v.union(v.literal("open"), v.literal("done"), v.literal("archived")),
     isPinned: v.optional(v.boolean()),
-    
+    isDailyHighlight: v.optional(v.boolean()),
+
     // Reminder fields
     triggerAt: v.optional(v.number()),
     timezone: v.optional(v.string()),
@@ -25,7 +26,7 @@ export default defineSchema({
       snoozedUntil: v.number(),
       snoozeCount: v.number(),
     })),
-    
+
     // Task fields
     taskSpec: v.optional(v.object({
       goal: v.string(),
@@ -36,6 +37,9 @@ export default defineSchema({
     })),
     executionPolicy: v.optional(v.union(v.literal("manual"), v.literal("auto"))),
     agentRunIds: v.optional(v.array(v.string())),
+
+    // Local-first sync metadata
+    localId: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_user_and_type", ["userId", "type"])

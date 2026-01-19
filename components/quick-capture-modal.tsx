@@ -10,27 +10,26 @@ import {
   Platform,
   Alert,
 } from 'react-native';
-import { useMutation } from 'convex/react';
-import { api } from '../convex/_generated/api';
+import * as chrono from 'chrono-node';
 import { ThemedView } from './themed-view';
 import { ThemedText } from './themed-text';
+import { IconSymbol } from './ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { useLocalItemMutations } from '@/hooks/use-local-items';
+import { scheduleStickyNotification, scheduleReminderNotification } from '@/lib/notification-manager';
+import { ItemType, TaskSpec } from '@/db/types';
 
 interface QuickCaptureModalProps {
   visible: boolean;
   onClose: () => void;
 }
 
-type ItemType = 'note' | 'reminder' | 'task';
-
 interface ParsedInput {
   type: ItemType;
   title: string;
   triggerAt?: number;
-  taskSpec?: {
-    goal: string;
-  };
+  taskSpec?: TaskSpec;
 }
 
 export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModalProps) {
@@ -39,8 +38,8 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
   const [isLoading, setIsLoading] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
-  
-  const createItem = useMutation(api.items.createItem);
+
+  const { createItem, setNotificationId } = useLocalItemMutations();
 
   const parseInput = (text: string): ParsedInput => {
     const lowerText = text.toLowerCase().trim();
@@ -56,37 +55,31 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
       };
     }
     
-    // Reminder detection
-    const reminderKeywords = ['remind me', 'reminder', 'at ', 'tomorrow', 'today', 'pm', 'am'];
+    // Try to parse date/time with chrono
+    const parsedDates = chrono.parse(text, new Date(), { forwardDate: true });
+    
+    // Reminder detection - check for time-related keywords or parsed dates
+    const reminderKeywords = ['remind me', 'reminder', 'at ', 'tomorrow', 'today', 'tonight', 'morning', 'afternoon', 'evening', 'next', 'on ', 'every'];
     const hasReminderKeyword = reminderKeywords.some(keyword => lowerText.includes(keyword));
     
-    if (hasReminderKeyword) {
-      // Simple time parsing - can be enhanced later
-      const timeMatch = text.match(/(\d{1,2})(:\d{2})?\s*(am|pm)/i);
+    if (hasReminderKeyword || parsedDates.length > 0) {
       let triggerAt: number | undefined;
+      let cleanTitle = text;
       
-      if (timeMatch) {
-        const hour = parseInt(timeMatch[1]);
-        const minute = timeMatch[2] ? parseInt(timeMatch[2].slice(1)) : 0;
-        const isPM = timeMatch[3].toLowerCase() === 'pm';
+      if (parsedDates.length > 0) {
+        const parsed = parsedDates[0];
+        triggerAt = parsed.start.date().getTime();
         
-        const now = new Date();
-        const reminderTime = new Date();
-        reminderTime.setHours(isPM && hour !== 12 ? hour + 12 : hour === 12 && !isPM ? 0 : hour);
-        reminderTime.setMinutes(minute);
-        reminderTime.setSeconds(0);
-        
-        // If time has passed today, set for tomorrow
-        if (reminderTime <= now) {
-          reminderTime.setDate(reminderTime.getDate() + 1);
-        }
-        
-        triggerAt = reminderTime.getTime();
+        // Remove the date/time text from the title
+        cleanTitle = text.substring(0, parsed.index) + text.substring(parsed.index + parsed.text.length);
+        cleanTitle = cleanTitle.replace(/^remind me to\s*/i, '').trim();
+      } else {
+        cleanTitle = text.replace(/^remind me to\s*/i, '');
       }
       
       return {
         type: 'reminder',
-        title: text.replace(/^remind me to\s*/i, ''),
+        title: cleanTitle || text,
         triggerAt,
       };
     }
@@ -100,25 +93,35 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
 
   const handleSave = async () => {
     if (!input.trim()) return;
-    
+
     setIsLoading(true);
     try {
       const parsed = parseInput(input);
-      
-      const itemId = await createItem({
+
+      // Create item locally (instant)
+      const item = await createItem({
         type: parsed.type,
         title: parsed.title,
         isPinned: isPinned,
         triggerAt: parsed.triggerAt,
         taskSpec: parsed.taskSpec,
       });
-      
-      // Schedule sticky notification if pinned
+
+      // Schedule notifications based on type
       if (isPinned && parsed.type === 'note') {
-        const { schedulePinnedNotification } = await import('@/lib/notifications');
-        await schedulePinnedNotification(itemId, parsed.title);
+        // Sticky notification for pinned notes
+        const notificationId = await scheduleStickyNotification(item.id, parsed.title);
+        if (notificationId) {
+          await setNotificationId(item.id, notificationId);
+        }
+      } else if (parsed.type === 'reminder' && parsed.triggerAt) {
+        // Scheduled notification for reminders
+        const notificationId = await scheduleReminderNotification(item.id, parsed.title, parsed.triggerAt);
+        if (notificationId) {
+          await setNotificationId(item.id, notificationId);
+        }
       }
-      
+
       setInput('');
       setIsPinned(false);
       onClose();
@@ -145,10 +148,10 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
 
   const getTypeIcon = (type: ItemType) => {
     switch (type) {
-      case 'note': return '📝';
-      case 'reminder': return '⏰';
-      case 'task': return '🤖';
-      default: return '📝';
+      case 'note': return 'Note';
+      case 'reminder': return 'Reminder';
+      case 'task': return 'Task';
+      default: return 'Note';
     }
   };
 
@@ -200,7 +203,7 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
               }]}
               onPress={() => setIsPinned(!isPinned)}
             >
-              <Text style={styles.pinIcon}>{isPinned ? '📌' : '📍'}</Text>
+              <IconSymbol name={isPinned ? 'pin.fill' : 'pin'} size={16} color={isPinned ? '#FFFFFF' : colors.text} />
               <Text style={[styles.pinText, { 
                 color: isPinned ? '#FFFFFF' : colors.text 
               }]}>
@@ -227,7 +230,7 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
 
           <View style={[styles.hints, { backgroundColor: colors.backgroundSecondary }]}>
             <ThemedText style={styles.hintText}>
-              💡 Try: "Remind me to call mom at 3pm" or "Agent: summarize this PDF"
+              Try: "Remind me tomorrow at 3pm to call mom" or "Meeting next Monday at 2:30pm" or "Agent: summarize this PDF"
             </ThemedText>
           </View>
         </View>
@@ -291,10 +294,7 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     borderWidth: 1,
-  },
-  pinIcon: {
-    fontSize: 16,
-    marginRight: 8,
+    gap: 8,
   },
   pinText: {
     fontSize: 14,
