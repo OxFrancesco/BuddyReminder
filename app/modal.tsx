@@ -1,19 +1,29 @@
-import { StyleSheet, TextInput, TouchableOpacity, Alert, Switch, View } from 'react-native';
-import { useState, useEffect } from 'react';
-import { useLocalSearchParams, router } from 'expo-router';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import RescheduleModal from '@/components/reschedule-modal';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useLocalItem, useLocalItemMutations } from '@/hooks/use-local-items';
-import { scheduleStickyNotification, cancelItemNotification } from '@/lib/notification-manager';
+import {
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  Alert,
+  Switch,
+  View,
+} from "react-native";
+import { useState, useEffect } from "react";
+import { useLocalSearchParams, router } from "expo-router";
+import { ThemedText } from "@/components/themed-text";
+import { ThemedView } from "@/components/themed-view";
+import { IconSymbol } from "@/components/ui/icon-symbol";
+import RescheduleModal from "@/components/reschedule-modal";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useLocalItem, useLocalItemMutations } from "@/hooks/use-local-items";
+import {
+  scheduleStickyNotification,
+  cancelItemNotification,
+} from "@/lib/notification-manager";
 
 export default function ModalScreen() {
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = Colors[colorScheme ?? "light"];
 
   const { item, isLoading } = useLocalItem(itemId ?? null);
   const {
@@ -24,8 +34,8 @@ export default function ModalScreen() {
     setNotificationId,
   } = useLocalItemMutations();
 
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
   const [isPinned, setIsPinned] = useState(false);
   const [isDailyHighlight, setIsDailyHighlight] = useState(false);
   const [showReschedulePicker, setShowReschedulePicker] = useState(false);
@@ -33,7 +43,7 @@ export default function ModalScreen() {
   useEffect(() => {
     if (item) {
       setTitle(item.title);
-      setBody(item.body || '');
+      setBody(item.body || "");
       setIsPinned(item.isPinned || false);
       setIsDailyHighlight(item.isDailyHighlight || false);
     }
@@ -49,7 +59,7 @@ export default function ModalScreen() {
   }, [title, item, updateItem]);
 
   useEffect(() => {
-    if (item && body !== (item.body || '')) {
+    if (item && body !== (item.body || "")) {
       const timeoutId = setTimeout(() => {
         updateItem(item.id, { body: body.trim() || undefined });
       }, 500);
@@ -63,9 +73,12 @@ export default function ModalScreen() {
       await toggleItemPin(item.id, value);
 
       // Handle notification
-      if (value && item.type === 'note') {
+      if (value && item.type === "note") {
         // Schedule sticky notification when pinning
-        const notificationId = await scheduleStickyNotification(item.id, item.title);
+        const notificationId = await scheduleStickyNotification(
+          item.id,
+          item.title,
+        );
         if (notificationId) {
           await setNotificationId(item.id, notificationId);
         }
@@ -102,53 +115,57 @@ export default function ModalScreen() {
 
       router.back();
     } catch (error) {
-      Alert.alert('Error', 'Failed to save changes');
+      Alert.alert("Error", "Failed to save changes");
     }
   };
 
   const handleDelete = async () => {
     if (!item) return;
 
-    Alert.alert(
-      'Delete Item',
-      'Are you sure you want to delete this item?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              // Cancel any notification for this item
-              if (item.notificationId) {
-                await cancelItemNotification(item.id, item.notificationId);
-              }
-              await deleteItem(item.id);
-              router.back();
-            } catch (error) {
-              Alert.alert('Error', 'Failed to delete item');
+    Alert.alert("Delete Item", "Are you sure you want to delete this item?", [
+      { text: "Cancel", style: "cancel" },
+      {
+        text: "Delete",
+        style: "destructive",
+        onPress: async () => {
+          try {
+            // Cancel any notification for this item
+            if (item.notificationId) {
+              await cancelItemNotification(item.id, item.notificationId);
             }
-          },
+            await deleteItem(item.id);
+            router.back();
+          } catch (error) {
+            Alert.alert("Error", "Failed to delete item");
+          }
         },
-      ]
-    );
+      },
+    ]);
   };
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'note': return 'Note';
-      case 'reminder': return 'Reminder';
-      case 'task': return 'Task';
-      default: return 'Note';
+      case "note":
+        return "Note";
+      case "reminder":
+        return "Reminder";
+      case "task":
+        return "Task";
+      default:
+        return "Note";
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'note': return '#6B7280';
-      case 'reminder': return '#F59E0B';
-      case 'task': return '#8B5CF6';
-      default: return colors.text;
+      case "note":
+        return colors.typeNote;
+      case "reminder":
+        return colors.typeReminder;
+      case "task":
+        return colors.typeTask;
+      default:
+        return colors.text;
     }
   };
 
@@ -171,59 +188,93 @@ export default function ModalScreen() {
   return (
     <ThemedView style={styles.container}>
       <TextInput
-        style={[styles.titleInput, { color: colors.text, borderColor: colors.icon }]}
+        style={[
+          styles.titleInput,
+          {
+            color: colors.text,
+            borderColor: colors.border,
+            backgroundColor: colors.background,
+            shadowColor: colors.shadow,
+          },
+        ]}
         value={title}
         onChangeText={setTitle}
         placeholder="Title"
         placeholderTextColor={colors.icon}
         multiline
       />
-      
-      <ThemedView style={[styles.menu, { backgroundColor: colors.backgroundSecondary, borderColor: colors.icon }]}>
+
+      <ThemedView
+        style={[
+          styles.menu,
+          {
+            backgroundColor: colors.backgroundSecondary,
+            borderColor: colors.icon,
+          },
+        ]}
+      >
         <ThemedView style={styles.menuItem}>
           <ThemedText style={styles.menuLabel}>Type</ThemedText>
-          <ThemedText style={[styles.typeText, { color: getTypeColor(item.type) }]}>
+          <ThemedText
+            style={[styles.typeText, { color: getTypeColor(item.type) }]}
+          >
             {getTypeIcon(item.type)}
           </ThemedText>
         </ThemedView>
-        
+
         <ThemedView style={styles.menuItem}>
           <ThemedText style={styles.menuLabel}>Pin to notifications</ThemedText>
           <Switch
             value={isPinned}
             onValueChange={handlePinToggle}
             trackColor={{ false: colors.icon, true: colors.tint }}
-            thumbColor={isPinned ? '#FFFFFF' : '#f4f3f4'}
+            thumbColor={
+              isPinned ? colors.switchThumbActive : colors.switchThumbInactive
+            }
           />
         </ThemedView>
-        
+
         <ThemedView style={styles.menuItem}>
           <ThemedText style={styles.menuLabel}>Daily Highlight</ThemedText>
           <Switch
             value={isDailyHighlight}
             onValueChange={handleHighlightToggle}
-            trackColor={{ false: colors.icon, true: '#FFD700' }}
-            thumbColor={isDailyHighlight ? '#FFFFFF' : '#f4f3f4'}
+            trackColor={{ false: colors.icon, true: colors.highlight }}
+            thumbColor={
+              isDailyHighlight
+                ? colors.switchThumbActive
+                : colors.switchThumbInactive
+            }
           />
         </ThemedView>
 
-        {item.type === 'reminder' && (
-          <TouchableOpacity style={styles.menuItem} onPress={() => setShowReschedulePicker(true)}>
+        {item.type === "reminder" && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => setShowReschedulePicker(true)}
+          >
             <ThemedText style={styles.menuLabel}>Reschedule</ThemedText>
             <IconSymbol name="chevron.right" size={20} color={colors.icon} />
           </TouchableOpacity>
         )}
-        
+
         <TouchableOpacity style={styles.menuItem} onPress={handleDelete}>
           <ThemedText style={styles.menuLabel}>Delete</ThemedText>
-          <ThemedText style={styles.deleteButtonText}>Delete</ThemedText>
+          <ThemedText
+            style={[styles.deleteButtonText, { color: colors.error }]}
+          >
+            Delete
+          </ThemedText>
         </TouchableOpacity>
       </ThemedView>
 
       <ThemedView style={styles.spacer} />
 
       <TextInput
-        style={[styles.bodyInput, { color: colors.text, borderColor: colors.icon }]}
+        style={[
+          styles.bodyInput,
+          { color: colors.text, borderColor: colors.icon },
+        ]}
         value={body}
         onChangeText={setBody}
         placeholder="Add notes..."
@@ -232,8 +283,7 @@ export default function ModalScreen() {
         textAlignVertical="top"
       />
 
-      <ThemedView style={styles.footer}>        
-      </ThemedView>
+      <ThemedView style={styles.footer}></ThemedView>
 
       <RescheduleModal
         itemId={showReschedulePicker && item ? item.id : null}
@@ -250,7 +300,7 @@ const styles = StyleSheet.create({
   },
   titleInput: {
     fontSize: 24,
-    fontWeight: '600',
+    fontWeight: "600",
     borderWidth: 1,
     borderRadius: 8,
     padding: 12,
@@ -272,39 +322,38 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     marginBottom: 16,
-    overflow: 'hidden',
+    overflow: "hidden",
   },
   spacer: {
     flex: 1,
   },
   menuItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0,0,0,0.1)',
+    borderBottomColor: "rgba(0,0,0,0.1)",
     minHeight: 50,
   },
   menuLabel: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   footer: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   typeText: {
     fontSize: 14,
-    fontWeight: '500',
-    textTransform: 'capitalize',
+    fontWeight: "500",
+    textTransform: "capitalize",
   },
   deleteButton: {
     padding: 8,
   },
   deleteButtonText: {
     fontSize: 14,
-    color: '#FF3B30',
   },
   saveButton: {
     paddingHorizontal: 20,
@@ -312,7 +361,7 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   saveButtonText: {
-    color: 'white',
-    fontWeight: '600',
+    color: "white",
+    fontWeight: "600",
   },
 });

@@ -24,8 +24,8 @@ export default function GesturesHelpScreen() {
 
           <View style={[styles.gestureCard, { backgroundColor: colors.backgroundSecondary }]}>
             <View style={styles.gestureHeader}>
-              <View style={[styles.iconContainer, { backgroundColor: '#34C759' }]}>
-                <IconSymbol name="checkmark.circle.fill" size={32} color="white" />
+              <View style={[styles.iconContainer, { backgroundColor: colors.success }]}>
+                <IconSymbol name="checkmark.circle.fill" size={32} color={colors.white} />
               </View>
               <ThemedText type="subtitle">Swipe Right</ThemedText>
             </View>
@@ -40,8 +40,8 @@ export default function GesturesHelpScreen() {
 
           <View style={[styles.gestureCard, { backgroundColor: colors.backgroundSecondary }]}>
             <View style={styles.gestureHeader}>
-              <View style={[styles.iconContainer, { backgroundColor: '#007AFF' }]}>
-                <IconSymbol name="calendar" size={32} color="white" />
+              <View style={[styles.iconContainer, { backgroundColor: colors.primary }]}>
+                <IconSymbol name="calendar" size={32} color={colors.white} />
               </View>
               <ThemedText type="subtitle">Swipe Left</ThemedText>
             </View>

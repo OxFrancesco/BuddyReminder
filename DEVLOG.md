@@ -2,6 +2,36 @@
 
 ## 2026-01-19
 
+### Theme System Implementation
+- Created comprehensive theme context with persistent storage using AsyncStorage
+- Updated color scheme hook to use theme context instead of system-only detection
+- Added theme switcher in settings with Auto/Light/Dark modes
+- Integrated theme provider in root layout for app-wide theme management
+- Theme preferences persist across app restarts and update entire UI
+
+### Daily Highlight Feature
+- Added `isDailyHighlight` field to items schema for marking important items
+- Created `toggleItemDailyHighlight` mutation for highlight state management
+- Implemented golden border styling (#FFD700) for highlighted items with enhanced shadows
+- Added sparkle icon next to titles of highlighted items in both list and modal
+- Created beautiful toggle in item settings menu with sparkle icon and gold theming
+- Daily highlights get premium visual treatment with liquid glass effects
+
+### Liquid Glass Card Design
+- Implemented liquid glass morphism using expo-blur BlurView component
+- Added adaptive transparency backgrounds for light/dark themes
+- Enhanced shadows and borders for floating card appearance
+- Replaced all emojis with proper SF Symbols icons (doc.text, bell, cpu)
+- Reorganized card layout with icon bubbles and improved typography hierarchy
+- Removed redundant information (created dates, status text) for cleaner design
+
+### Auto-Save Implementation
+- Removed manual save buttons in favor of automatic persistence
+- Implemented debounced auto-save (500ms delay) for title and body text changes
+- Added instant save for toggle switches (pin, daily highlight)
+- Enhanced user experience with seamless editing and no save anxiety
+- Proper error handling for failed save operations
+
 ### UI/UX Polish
 - Removed all emojis from the app (replaced with text labels and SF Symbols)
 - Fixed duplicate type text in item details (was showing "Reminder reminder")

@@ -1,44 +1,59 @@
-import { FlatList, StyleSheet, View, TouchableOpacity, Text, Alert, Animated } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BlurView } from 'expo-blur';
-import { router } from 'expo-router';
-import { Swipeable } from 'react-native-gesture-handler';
-import { ThemedView } from './themed-view';
-import { ThemedText } from './themed-text';
-import { IconSymbol } from './ui/icon-symbol';
-import { Colors } from '@/constants/theme';
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import { useAuth } from '@clerk/clerk-expo';
-import { useState } from 'react';
-import RescheduleModal from './reschedule-modal';
-import { useLocalItems, useLocalItemMutations } from '@/hooks/use-local-items';
-import { LocalItem } from '@/db/types';
-import { cancelItemNotification } from '@/lib/notification-manager';
+import {
+  FlatList,
+  StyleSheet,
+  View,
+  TouchableOpacity,
+  Text,
+  Alert,
+  Animated,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
+import { Swipeable } from "react-native-gesture-handler";
+import { ThemedView } from "./themed-view";
+import { ThemedText } from "./themed-text";
+import { IconSymbol } from "./ui/icon-symbol";
+import { Colors } from "@/constants/theme";
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import { useAuth } from "@clerk/clerk-expo";
+import { useState } from "react";
+import RescheduleModal from "./reschedule-modal";
+import { useLocalItems, useLocalItemMutations } from "@/hooks/use-local-items";
+import { LocalItem } from "@/db/types";
+import { cancelItemNotification } from "@/lib/notification-manager";
 
 export default function ItemsList() {
   const { isSignedIn, isLoaded } = useAuth();
   const { items, isLoading } = useLocalItems();
   const { updateItemStatus } = useLocalItemMutations();
   const colorScheme = useColorScheme();
-  const colors = Colors[colorScheme ?? 'light'];
+  const colors = Colors[colorScheme ?? "light"];
   const insets = useSafeAreaInsets();
   const [rescheduleItemId, setRescheduleItemId] = useState<string | null>(null);
 
   const getTypeIcon = (type: string) => {
     switch (type) {
-      case 'note': return 'doc.text';
-      case 'reminder': return 'bell';
-      case 'task': return 'cpu';
-      default: return 'doc.text';
+      case "note":
+        return "doc.text";
+      case "reminder":
+        return "bell";
+      case "task":
+        return "cpu";
+      default:
+        return "doc.text";
     }
   };
 
   const getTypeColor = (type: string) => {
     switch (type) {
-      case 'note': return '#6B7280';
-      case 'reminder': return '#F59E0B';
-      case 'task': return '#8B5CF6';
-      default: return colors.text;
+      case "note":
+        return colors.typeNote;
+      case "reminder":
+        return colors.typeReminder;
+      case "task":
+        return colors.typeTask;
+      default:
+        return colors.text;
     }
   };
 
@@ -54,9 +69,9 @@ export default function ItemsList() {
       if (item.notificationId) {
         await cancelItemNotification(item.id, item.notificationId);
       }
-      await updateItemStatus(item.id, 'archived');
+      await updateItemStatus(item.id, "archived");
     } catch (error) {
-      Alert.alert('Error', 'Failed to archive item');
+      Alert.alert("Error", "Failed to archive item");
     }
   };
 
@@ -64,87 +79,133 @@ export default function ItemsList() {
     setRescheduleItemId(itemId);
   };
 
-  const renderRightActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>) => {
+  const renderRightActions = (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>,
+  ) => {
     const scale = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [1, 0],
-      extrapolate: 'clamp',
+      extrapolate: "clamp",
     });
 
     return (
-      <Animated.View style={[styles.swipeAction, styles.completeAction, { transform: [{ scale }] }]}>
-        <IconSymbol name="checkmark.circle.fill" size={28} color="white" />
-        <Text style={styles.swipeActionText}>Done</Text>
+      <Animated.View
+        style={[
+          styles.swipeAction,
+          styles.completeAction,
+          { transform: [{ scale }], backgroundColor: colors.success },
+        ]}
+      >
+        <IconSymbol
+          name="checkmark.circle.fill"
+          size={28}
+          color={colors.white}
+        />
+        <Text style={[styles.swipeActionText, { color: colors.white }]}>
+          Done
+        </Text>
       </Animated.View>
     );
   };
 
-  const renderLeftActions = (progress: Animated.AnimatedInterpolation<number>, dragX: Animated.AnimatedInterpolation<number>, item: LocalItem) => {
-    if (item.type !== 'reminder') return null;
+  const renderLeftActions = (
+    progress: Animated.AnimatedInterpolation<number>,
+    dragX: Animated.AnimatedInterpolation<number>,
+    item: LocalItem,
+  ) => {
+    if (item.type !== "reminder") return null;
 
     const scale = dragX.interpolate({
       inputRange: [0, 100],
       outputRange: [0, 1],
-      extrapolate: 'clamp',
+      extrapolate: "clamp",
     });
 
     return (
-      <Animated.View style={[styles.swipeAction, styles.rescheduleAction, { transform: [{ scale }] }]}>
-        <IconSymbol name="calendar" size={28} color="white" />
-        <Text style={styles.swipeActionText}>Reschedule</Text>
+      <Animated.View
+        style={[
+          styles.swipeAction,
+          styles.rescheduleAction,
+          { transform: [{ scale }], backgroundColor: colors.primary },
+        ]}
+      >
+        <IconSymbol name="calendar" size={28} color={colors.white} />
+        <Text style={[styles.swipeActionText, { color: colors.white }]}>
+          Reschedule
+        </Text>
       </Animated.View>
     );
   };
 
   const renderItem = ({ item }: { item: LocalItem }) => (
     <Swipeable
-      renderRightActions={(progress, dragX) => renderRightActions(progress, dragX)}
-      renderLeftActions={(progress, dragX) => renderLeftActions(progress, dragX, item)}
+      renderRightActions={(progress, dragX) =>
+        renderRightActions(progress, dragX)
+      }
+      renderLeftActions={(progress, dragX) =>
+        renderLeftActions(progress, dragX, item)
+      }
       onSwipeableRightOpen={() => handleComplete(item)}
-      onSwipeableLeftOpen={() => item.type === 'reminder' && handleReschedule(item.id)}
+      onSwipeableLeftOpen={() =>
+        item.type === "reminder" && handleReschedule(item.id)
+      }
       overshootRight={false}
       overshootLeft={false}
     >
       <TouchableOpacity
         style={styles.itemContainer}
         onPress={() => router.push(`/modal?itemId=${item.id}`)}
+        activeOpacity={0.9}
       >
-        <BlurView 
-          intensity={20}
-          tint={colorScheme}
+        <ThemedView
           style={[
-            styles.glassCard, 
+            styles.neobrutalistCard,
             {
-              backgroundColor: colorScheme === 'dark' 
-                ? 'rgba(255, 255, 255, 0.1)' 
-                : 'rgba(255, 255, 255, 0.7)',
-              borderColor: item.isDailyHighlight 
-                ? '#FFD700'
-                : colorScheme === 'dark'
-                ? 'rgba(255, 255, 255, 0.2)'
-                : 'rgba(0, 0, 0, 0.1)',
-              borderWidth: item.isDailyHighlight ? 2 : 1,
-              shadowColor: item.isDailyHighlight ? '#FFD700' : colors.text,
-              shadowOpacity: item.isDailyHighlight ? 0.3 : 0.15,
-            }
+              backgroundColor: colors.card,
+              borderColor: colors.border,
+              borderWidth: 2,
+              shadowColor: colors.shadow,
+            },
           ]}
         >
           <View style={styles.itemContent}>
             <View style={styles.itemHeader}>
-              <View style={[styles.typeIndicator, { backgroundColor: getTypeColor(item.type) }]}>
-                <IconSymbol name={getTypeIcon(item.type)} size={20} color="white" />
+              <View
+                style={[
+                  styles.typeIndicator,
+                  {
+                    backgroundColor: getTypeColor(item.type),
+                    borderColor: colors.border,
+                    borderWidth: 2,
+                  },
+                ]}
+              >
+                <IconSymbol
+                  name={getTypeIcon(item.type)}
+                  size={20}
+                  color={colors.white}
+                />
               </View>
               <View style={styles.titleContainer}>
                 <View style={styles.titleRow}>
-                  <ThemedText type="defaultSemiBold" style={styles.title} numberOfLines={2}>
+                  <ThemedText
+                    type="defaultSemiBold"
+                    style={styles.title}
+                    numberOfLines={2}
+                  >
                     {item.title}
                   </ThemedText>
                   {item.isDailyHighlight && (
-                    <IconSymbol name="sparkles" size={16} color="#FFD700" />
+                    <IconSymbol
+                      name="sparkles"
+                      size={16}
+                      color={colors.highlight}
+                    />
                   )}
                 </View>
                 {item.triggerAt && (
-                  <Text style={[styles.triggerTime, { color: colors.icon }]}>
+                  <Text style={[styles.triggerTime, { color: colors.text }]}>
                     {formatTime(item.triggerAt)}
                   </Text>
                 )}
@@ -156,7 +217,7 @@ export default function ItemsList() {
               </View>
             </View>
           </View>
-        </BlurView>
+        </ThemedView>
       </TouchableOpacity>
     </Swipeable>
   );
@@ -180,7 +241,12 @@ export default function ItemsList() {
   if (items.length === 0) {
     return (
       <ThemedView style={styles.emptyContainer}>
-        <IconSymbol name="doc.text" size={48} color={colors.icon} style={styles.emptyIcon} />
+        <IconSymbol
+          name="doc.text"
+          size={48}
+          color={colors.icon}
+          style={styles.emptyIcon}
+        />
         <ThemedText type="subtitle" style={styles.emptyTitle}>
           No items yet
         </ThemedText>
@@ -196,7 +262,10 @@ export default function ItemsList() {
       data={items}
       renderItem={renderItem}
       keyExtractor={(item) => item.id}
-      contentContainerStyle={[styles.listContainer, { paddingTop: insets.top + 16 }]}
+      contentContainerStyle={[
+        styles.listContainer,
+        { paddingTop: insets.top + 16 },
+      ]}
       showsVerticalScrollIndicator={false}
       removeClippedSubviews={true}
       maxToRenderPerBatch={10}
@@ -214,13 +283,13 @@ export default function ItemsList() {
 const styles = StyleSheet.create({
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
   },
   emptyIcon: {
@@ -228,10 +297,10 @@ const styles = StyleSheet.create({
   },
   emptyTitle: {
     marginBottom: 8,
-    textAlign: 'center',
+    textAlign: "center",
   },
   emptyText: {
-    textAlign: 'center',
+    textAlign: "center",
     opacity: 0.7,
   },
   listContainer: {
@@ -242,50 +311,48 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   swipeAction: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     width: 80,
-    height: '100%',
-    borderRadius: 16,
+    height: "100%",
+    borderRadius: 4,
+    borderWidth: 2,
+    borderColor: "#000000",
   },
   completeAction: {
-    backgroundColor: '#34C759',
     marginLeft: 8,
   },
   rescheduleAction: {
-    backgroundColor: '#007AFF',
     marginRight: 8,
   },
   swipeActionText: {
-    color: 'white',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "bold",
     marginTop: 4,
   },
-  glassCard: {
-    borderRadius: 16,
-    borderWidth: 1,
+  neobrutalistCard: {
+    borderRadius: 4,
     padding: 16,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 12,
-    elevation: 8,
-    overflow: 'hidden',
+    shadowOffset: { width: 4, height: 4 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
+    elevation: 0, // Elevation has blur, so we might skip it or accept it on Android
+    marginBottom: 4, // Space for shadow
   },
   itemContent: {
     gap: 12,
   },
   itemHeader: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    alignItems: "flex-start",
     gap: 12,
   },
   typeIndicator: {
     width: 40,
     height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
+    borderRadius: 4, // Square-ish
+    justifyContent: "center",
+    alignItems: "center",
     flexShrink: 0,
   },
   typeIcon: {
@@ -296,8 +363,8 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: 8,
   },
   title: {
@@ -306,7 +373,7 @@ const styles = StyleSheet.create({
   },
   triggerTime: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   body: {
     fontSize: 14,

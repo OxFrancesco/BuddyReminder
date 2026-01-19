@@ -1,4 +1,4 @@
-import { v4 as uuidv4 } from 'uuid';
+import * as Crypto from 'expo-crypto';
 import { getDatabase, rowToItem } from './database';
 import {
   LocalItem,
@@ -26,7 +26,7 @@ function notifyListeners() {
 export async function createItem(input: CreateItemInput): Promise<LocalItem> {
   const db = await getDatabase();
   const now = Date.now();
-  const id = uuidv4();
+  const id = Crypto.randomUUID();
 
   const item: LocalItem = {
     id,
@@ -343,7 +343,7 @@ export async function upsertFromRemote(
   }
 
   // Create new item from remote
-  const id = uuidv4();
+  const id = Crypto.randomUUID();
   const item: LocalItem = {
     id,
     convexId: remoteItem.convexId,
