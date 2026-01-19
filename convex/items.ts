@@ -23,6 +23,7 @@ export const getUserItems = query({
       triggerAt: v.optional(v.number()),
       timezone: v.optional(v.string()),
       repeatRule: v.optional(v.string()),
+      updatedAt: v.optional(v.number()),
       snoozeState: v.optional(v.object({
         snoozedUntil: v.number(),
         snoozeCount: v.number(),
@@ -131,6 +132,7 @@ export const createItem = mutation({
       throw new Error("User not found");
     }
 
+    const now = Date.now();
     return await ctx.db.insert("items", {
       userId: user._id,
       type: args.type,
@@ -144,6 +146,7 @@ export const createItem = mutation({
       taskSpec: args.taskSpec,
       executionPolicy: args.executionPolicy || "manual",
       agentRunIds: [],
+      updatedAt: now,
     });
   },
 });
@@ -183,7 +186,7 @@ export const updateItem = mutation({
       throw new Error("Unauthorized");
     }
 
-    const updates: any = {};
+    const updates: any = { updatedAt: Date.now() };
     if (args.title !== undefined) updates.title = args.title;
     if (args.body !== undefined) updates.body = args.body;
     if (args.triggerAt !== undefined) updates.triggerAt = args.triggerAt;
@@ -228,6 +231,7 @@ export const updateItemStatus = mutation({
 
     await ctx.db.patch(args.itemId, {
       status: args.status,
+      updatedAt: Date.now(),
     });
 
     return null;
@@ -269,6 +273,7 @@ export const toggleItemPin = mutation({
 
     await ctx.db.patch(args.itemId, {
       isPinned: args.isPinned,
+      updatedAt: Date.now(),
     });
 
     return null;
@@ -310,6 +315,7 @@ export const toggleItemDailyHighlight = mutation({
 
     await ctx.db.patch(args.itemId, {
       isDailyHighlight: args.isDailyHighlight,
+      updatedAt: Date.now(),
     });
 
     return null;

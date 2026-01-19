@@ -12,7 +12,7 @@ interface SyncSettingsContextType {
 const SyncSettingsContext = createContext<SyncSettingsContextType | undefined>(undefined);
 
 export function SyncSettingsProvider({ children }: { children: React.ReactNode }) {
-  const [syncMode, setSyncModeState] = useState<SyncMode>('cloud');
+  const [syncMode, setSyncModeState] = useState<SyncMode>('local');
 
   useEffect(() => {
     loadSyncPreference();

@@ -19,6 +19,7 @@ export function subscribeToItemChanges(listener: ItemChangeListener): () => void
 }
 
 function notifyListeners() {
+  console.log('[Repository] notifyListeners called, listener count:', listeners.size, new Error().stack?.split('\n').slice(1, 4).join('\n'));
   listeners.forEach((listener) => listener());
 }
 
@@ -95,7 +96,9 @@ export async function getItemById(id: string): Promise<LocalItem | null> {
     'SELECT * FROM items WHERE id = ? AND deletedAt IS NULL',
     [id]
   );
-  return row ? rowToItem(row) : null;
+  const item = row ? rowToItem(row) : null;
+  console.log('[Repository] getItemById', { id, found: !!item, body: item?.body, isDailyHighlight: item?.isDailyHighlight });
+  return item;
 }
 
 export async function getItemByConvexId(convexId: string): Promise<LocalItem | null> {
@@ -153,6 +156,7 @@ export async function updateItem(
   id: string,
   updates: UpdateItemInput
 ): Promise<LocalItem | null> {
+  console.log('[Repository] updateItem called', { id, updates });
   const db = await getDatabase();
   const now = Date.now();
 
@@ -194,13 +198,21 @@ export async function updateItem(
 
   params.push(id);
 
-  await db.runAsync(
-    `UPDATE items SET ${setClauses.join(', ')} WHERE id = ?`,
-    params
-  );
+  const query = `UPDATE items SET ${setClauses.join(', ')} WHERE id = ?`;
+  console.log('[Repository] Running SQL:', query, 'params:', params);
+
+  try {
+    await db.runAsync(query, params);
+    console.log('[Repository] SQL executed successfully');
+  } catch (error) {
+    console.error('[Repository] SQL error:', error);
+    throw error;
+  }
 
   notifyListeners();
-  return getItemById(id);
+  const result = await getItemById(id);
+  console.log('[Repository] updateItem returning:', { id, body: result?.body, isDailyHighlight: result?.isDailyHighlight });
+  return result;
 }
 
 export async function updateItemStatus(
@@ -214,6 +226,7 @@ export async function toggleItemPin(
   id: string,
   isPinned: boolean
 ): Promise<LocalItem | null> {
+  console.log('[Repository] toggleItemPin called', { id, isPinned });
   return updateItem(id, { isPinned });
 }
 
@@ -221,6 +234,7 @@ export async function toggleItemDailyHighlight(
   id: string,
   isDailyHighlight: boolean
 ): Promise<LocalItem | null> {
+  console.log('[Repository] toggleItemDailyHighlight called', { id, isDailyHighlight });
   return updateItem(id, { isDailyHighlight });
 }
 
@@ -266,13 +280,18 @@ export async function getPendingChanges(clerkUserId: string): Promise<LocalItem[
 
 export async function markAsSynced(
   id: string,
-  convexId: string
+  convexId: string,
+  expectedUpdatedAt: number
 ): Promise<void> {
   const db = await getDatabase();
   const now = Date.now();
   await db.runAsync(
-    'UPDATE items SET convexId = ?, syncStatus = ?, syncedAt = ? WHERE id = ?',
-    [convexId, 'synced', now, id]
+    `UPDATE items
+     SET convexId = ?,
+         syncStatus = CASE WHEN updatedAt = ? THEN ? ELSE syncStatus END,
+         syncedAt = CASE WHEN updatedAt = ? THEN ? ELSE syncedAt END
+     WHERE id = ?`,
+    [convexId, expectedUpdatedAt, 'synced', expectedUpdatedAt, now, id]
   );
   notifyListeners();
 }
@@ -303,22 +322,47 @@ export async function upsertFromRemote(
     taskSpec?: LocalItem['taskSpec'];
     executionPolicy?: 'manual' | 'auto';
     createdAt: number;
+    updatedAt?: number;
   }
 ): Promise<LocalItem> {
+  console.log('[Repository] upsertFromRemote called for:', remoteItem.convexId, { isDailyHighlight: remoteItem.isDailyHighlight });
   const db = await getDatabase();
   const now = Date.now();
+  const remoteUpdatedAt = remoteItem.updatedAt ?? remoteItem.createdAt;
 
   // Check if item exists locally
   const existing = await getItemByConvexId(remoteItem.convexId);
+  console.log('[Repository] upsertFromRemote existing:', existing?.id, { syncStatus: existing?.syncStatus, localDailyHighlight: existing?.isDailyHighlight });
 
   if (existing) {
     // Update existing item (only if not locally modified)
     if (existing.syncStatus === 'synced') {
+      if (remoteUpdatedAt <= existing.updatedAt) {
+        console.log('[Repository] upsertFromRemote skipping - local is newer');
+        return existing;
+      }
+      // Check if data actually changed to avoid infinite sync loops
+      const hasChanges =
+        existing.title !== remoteItem.title ||
+        existing.body !== (remoteItem.body || null) ||
+        existing.status !== remoteItem.status ||
+        existing.isPinned !== (remoteItem.isPinned || false) ||
+        existing.isDailyHighlight !== (remoteItem.isDailyHighlight || false) ||
+        existing.triggerAt !== (remoteItem.triggerAt || null) ||
+        existing.timezone !== (remoteItem.timezone || null) ||
+        existing.repeatRule !== (remoteItem.repeatRule || null);
+
+      if (!hasChanges) {
+        console.log('[Repository] upsertFromRemote skipping - no changes');
+        return existing;
+      }
+
+      console.log('[Repository] upsertFromRemote updating synced item');
       await db.runAsync(
         `UPDATE items SET
           title = ?, body = ?, status = ?, isPinned = ?, isDailyHighlight = ?,
           triggerAt = ?, timezone = ?, repeatRule = ?, snoozeState = ?, taskSpec = ?,
-          executionPolicy = ?, syncedAt = ?
+          executionPolicy = ?, updatedAt = ?, syncedAt = ?
         WHERE convexId = ?`,
         [
           remoteItem.title,
@@ -332,6 +376,7 @@ export async function upsertFromRemote(
           remoteItem.snoozeState ? JSON.stringify(remoteItem.snoozeState) : null,
           remoteItem.taskSpec ? JSON.stringify(remoteItem.taskSpec) : null,
           remoteItem.executionPolicy || null,
+          remoteUpdatedAt,
           now,
           remoteItem.convexId,
         ]
@@ -339,6 +384,7 @@ export async function upsertFromRemote(
       notifyListeners();
       return (await getItemByConvexId(remoteItem.convexId))!;
     }
+    console.log('[Repository] upsertFromRemote skipping update - local changes pending');
     return existing; // Local changes take precedence
   }
 
@@ -363,7 +409,7 @@ export async function upsertFromRemote(
     notificationId: null,
     syncStatus: 'synced',
     createdAt: remoteItem.createdAt,
-    updatedAt: now,
+    updatedAt: remoteUpdatedAt,
     syncedAt: now,
     deletedAt: null,
   };

@@ -6,7 +6,7 @@ import {
   Switch,
   View,
 } from "react-native";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useLocalSearchParams, router } from "expo-router";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
@@ -43,8 +43,21 @@ export default function ModalScreen() {
   const [showReschedulePicker, setShowReschedulePicker] = useState(false);
   const [showAgentModal, setShowAgentModal] = useState(false);
 
+  // Track which item we've initialized for - only sync from db once per item
+  const initializedForItemId = useRef<string | null>(null);
+
   useEffect(() => {
-    if (item) {
+    console.log('[Modal] Item effect triggered', {
+      itemId: item?.id,
+      initializedFor: initializedForItemId.current,
+      itemBody: item?.body,
+      itemHighlight: item?.isDailyHighlight,
+    });
+    // Only initialize form state once when item first loads
+    // This prevents subscription-triggered refetches from resetting user edits
+    if (item && initializedForItemId.current !== item.id) {
+      console.log('[Modal] Initializing form state for item:', item.id);
+      initializedForItemId.current = item.id;
       setTitle(item.title);
       setBody(item.body || "");
       setIsPinned(item.isPinned || false);
@@ -53,8 +66,14 @@ export default function ModalScreen() {
   }, [item]);
 
   useEffect(() => {
+    console.log('[Modal] Title effect', {
+      title,
+      itemTitle: item?.title,
+      willSave: item && title !== item.title && title.trim()
+    });
     if (item && title !== item.title && title.trim()) {
       const timeoutId = setTimeout(() => {
+        console.log('[Modal] Saving title:', title.trim());
         updateItem(item.id, { title: title.trim() });
       }, 500);
       return () => clearTimeout(timeoutId);
@@ -62,8 +81,14 @@ export default function ModalScreen() {
   }, [title, item, updateItem]);
 
   useEffect(() => {
+    console.log('[Modal] Body effect', {
+      body,
+      itemBody: item?.body,
+      willSave: item && body !== (item.body || "")
+    });
     if (item && body !== (item.body || "")) {
       const timeoutId = setTimeout(() => {
+        console.log('[Modal] Saving body:', body.trim());
         updateItem(item.id, { body: body.trim() || undefined });
       }, 500);
       return () => clearTimeout(timeoutId);
@@ -71,9 +96,12 @@ export default function ModalScreen() {
   }, [body, item, updateItem]);
 
   const handlePinToggle = async (value: boolean) => {
+    console.log('[Modal] handlePinToggle called with:', value);
     setIsPinned(value);
     if (item) {
-      await toggleItemPin(item.id, value);
+      console.log('[Modal] Calling toggleItemPin for item:', item.id);
+      const result = await toggleItemPin(item.id, value);
+      console.log('[Modal] toggleItemPin result:', result);
 
       // Handle notification
       if (value && item.type === "note") {
@@ -93,32 +121,12 @@ export default function ModalScreen() {
   };
 
   const handleHighlightToggle = async (value: boolean) => {
+    console.log('[Modal] handleHighlightToggle called with:', value);
     setIsDailyHighlight(value);
     if (item) {
-      await toggleItemDailyHighlight(item.id, value);
-    }
-  };
-
-  const handleSave = async () => {
-    if (!item) return;
-
-    try {
-      await updateItem(item.id, {
-        title: title.trim(),
-        body: body.trim() || undefined,
-      });
-
-      if (isPinned !== (item.isPinned || false)) {
-        await toggleItemPin(item.id, isPinned);
-      }
-
-      if (isDailyHighlight !== (item.isDailyHighlight || false)) {
-        await toggleItemDailyHighlight(item.id, isDailyHighlight);
-      }
-
-      router.back();
-    } catch (error) {
-      Alert.alert("Error", "Failed to save changes");
+      console.log('[Modal] Calling toggleItemDailyHighlight for item:', item.id);
+      const result = await toggleItemDailyHighlight(item.id, value);
+      console.log('[Modal] toggleItemDailyHighlight result:', result);
     }
   };
 
@@ -138,7 +146,7 @@ export default function ModalScreen() {
             }
             await deleteItem(item.id);
             router.back();
-          } catch (error) {
+          } catch {
             Alert.alert("Error", "Failed to delete item");
           }
         },
@@ -292,7 +300,10 @@ export default function ModalScreen() {
           { color: colors.text, borderColor: colors.icon },
         ]}
         value={body}
-        onChangeText={setBody}
+        onChangeText={(text) => {
+          console.log('[Modal] Body onChangeText:', text);
+          setBody(text);
+        }}
         placeholder="Add notes..."
         placeholderTextColor={colors.icon}
         multiline

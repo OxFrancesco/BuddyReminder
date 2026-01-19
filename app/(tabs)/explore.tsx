@@ -66,13 +66,11 @@ export default function TabTwoScreen() {
         </ThemedView>
 
         <ThemedView style={[styles.settingsSection, { backgroundColor: colors.backgroundSecondary, borderColor: colors.icon }]}>
-          <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Data Sync</ThemedText>
-          
           <View style={styles.syncOption}>
             <View style={styles.syncInfo}>
               <ThemedText type="defaultSemiBold">Cloud Sync</ThemedText>
               <ThemedText style={[styles.syncDescription, { color: colors.icon }]}>
-                {syncMode === 'cloud' ? 'Syncing with Convex' : 'Local storage only'}
+                {syncMode === 'cloud' ? 'Enabled' : 'Disabled'}
               </ThemedText>
             </View>
             <Switch

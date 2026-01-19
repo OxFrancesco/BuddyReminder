@@ -50,7 +50,7 @@ export async function pushChanges(
           taskSpec: item.taskSpec || undefined,
           executionPolicy: item.executionPolicy || undefined,
         });
-        await markAsSynced(item.id, convexId);
+        await markAsSynced(item.id, convexId, item.updatedAt);
         pushed++;
       } else {
         // Existing item - update in Convex
@@ -79,7 +79,7 @@ export async function pushChanges(
           isDailyHighlight: item.isDailyHighlight,
         });
 
-        await markAsSynced(item.id, item.convexId);
+        await markAsSynced(item.id, item.convexId, item.updatedAt);
         pushed++;
       }
     } catch (error) {
@@ -106,6 +106,7 @@ export async function pullChanges(
 
     for (const remoteItem of remoteItems) {
       try {
+        const remoteUpdatedAt = (remoteItem as { updatedAt?: number }).updatedAt;
         await upsertFromRemote({
           convexId: remoteItem._id,
           clerkUserId: clerkUserId,
@@ -114,7 +115,7 @@ export async function pullChanges(
           body: remoteItem.body,
           status: remoteItem.status,
           isPinned: remoteItem.isPinned,
-          isDailyHighlight: undefined, // Add if exists in remote
+          isDailyHighlight: remoteItem.isDailyHighlight, // Fixed: was undefined
           triggerAt: remoteItem.triggerAt,
           timezone: remoteItem.timezone,
           repeatRule: remoteItem.repeatRule,
@@ -122,6 +123,7 @@ export async function pullChanges(
           taskSpec: remoteItem.taskSpec,
           executionPolicy: remoteItem.executionPolicy,
           createdAt: remoteItem._creationTime,
+          updatedAt: remoteUpdatedAt,
         });
         pulled++;
       } catch (error) {

@@ -46,7 +46,7 @@ export default function GesturesHelpScreen() {
               <ThemedText type="subtitle">Swipe Left</ThemedText>
             </View>
             <ThemedText style={styles.gestureDescription}>
-              Swipe a reminder to the left to reschedule it. You'll be able to set a new date and time using natural language.
+              Swipe a reminder to the left to reschedule it. You&apos;ll be able to set a new date and time using natural language.
             </ThemedText>
             <View style={[styles.demoBox, { borderColor: colors.border }]}>
               <ThemedText style={styles.demoText}>Swipe left ←</ThemedText>

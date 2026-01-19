@@ -76,7 +76,7 @@ export default function ItemsList() {
         await cancelItemNotification(item.id, item.notificationId);
       }
       await updateItemStatus(item.id, "archived");
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to archive item");
     }
   };

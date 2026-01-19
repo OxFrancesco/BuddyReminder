@@ -51,7 +51,7 @@ export default function RescheduleModal({
       await updateItem(itemId, { triggerAt });
       setInput("");
       onClose();
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to reschedule item");
     }
   };
@@ -62,7 +62,7 @@ export default function RescheduleModal({
     try {
       await updateItem(itemId, { triggerAt: selectedDate.getTime() });
       onClose();
-    } catch (error) {
+    } catch {
       Alert.alert("Error", "Failed to reschedule item");
     }
   };
@@ -151,8 +151,9 @@ export default function RescheduleModal({
             ]}
           >
             <ThemedText style={styles.hintText}>
-              Examples: "tomorrow at 3pm", "next Monday at 9am", "in 2 hours",
-              "tonight"
+              Examples: &ldquo;tomorrow at 3pm&rdquo;,
+              &ldquo;next Monday at 9am&rdquo;, &ldquo;in 2 hours&rdquo;,
+              &ldquo;tonight&rdquo;
             </ThemedText>
           </View>
 

@@ -11,7 +11,6 @@ import {
   Alert,
 } from "react-native";
 import * as chrono from "chrono-node";
-import { ThemedView } from "./themed-view";
 import { ThemedText } from "./themed-text";
 import { IconSymbol } from "./ui/icon-symbol";
 import { Colors } from "@/constants/theme";
@@ -206,19 +205,6 @@ export default function QuickCaptureModal({
     }
   };
 
-  const getTypeIcon = (type: ItemType) => {
-    switch (type) {
-      case "note":
-        return "Note";
-      case "reminder":
-        return "Reminder";
-      case "task":
-        return "Task";
-      default:
-        return "Note";
-    }
-  };
-
   return (
     <Modal
       visible={visible}
@@ -354,8 +340,9 @@ export default function QuickCaptureModal({
             ]}
           >
             <ThemedText style={styles.hintText}>
-              Try: "Remind me tomorrow at 3pm to call mom" or "Meeting next
-              Monday at 2:30pm" or "Agent: summarize this PDF"
+              Try: &ldquo;Remind me tomorrow at 3pm to call mom&rdquo; or
+              &ldquo;Meeting next Monday at 2:30pm&rdquo; or
+              &ldquo;Agent: summarize this PDF&rdquo;
             </ThemedText>
           </View>
         </View>

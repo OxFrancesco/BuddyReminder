@@ -52,7 +52,7 @@ export default function AuthScreen() {
         <ThemedView style={styles.authenticatedContainer}>
           <ThemedText type="title">Welcome back!</ThemedText>
           <ThemedText>
-            You're successfully authenticated with BuddyReminder.
+            You&apos;re successfully authenticated with BuddyReminder.
           </ThemedText>
           <Pressable
             style={[

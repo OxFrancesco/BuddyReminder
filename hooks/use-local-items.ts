@@ -95,11 +95,16 @@ export function useLocalItem(itemId: string | null): {
 
   // Subscribe to changes
   useEffect(() => {
+    console.log('[useLocalItem] Setting up subscription for item:', itemId);
     const unsubscribe = subscribeToItemChanges(() => {
+      console.log('[useLocalItem] Subscription triggered, refetching item:', itemId);
       fetchItem();
     });
-    return unsubscribe;
-  }, [fetchItem]);
+    return () => {
+      console.log('[useLocalItem] Cleaning up subscription for item:', itemId);
+      unsubscribe();
+    };
+  }, [fetchItem, itemId]);
 
   return { item, isLoading, refetch: fetchItem };
 }
@@ -118,7 +123,10 @@ export function useLocalItemMutations() {
 
   const updateItem = useCallback(
     async (itemId: string, updates: UpdateItemInput): Promise<LocalItem | null> => {
-      return repoUpdateItem(itemId, updates);
+      console.log('[useLocalItemMutations] updateItem called', { itemId, updates });
+      const result = await repoUpdateItem(itemId, updates);
+      console.log('[useLocalItemMutations] updateItem result', { itemId, result: result ? { body: result.body, isDailyHighlight: result.isDailyHighlight } : null });
+      return result;
     },
     []
   );
@@ -136,14 +144,20 @@ export function useLocalItemMutations() {
 
   const toggleItemPin = useCallback(
     async (itemId: string, isPinned: boolean): Promise<LocalItem | null> => {
-      return repoToggleItemPin(itemId, isPinned);
+      console.log('[useLocalItemMutations] toggleItemPin called', { itemId, isPinned });
+      const result = await repoToggleItemPin(itemId, isPinned);
+      console.log('[useLocalItemMutations] toggleItemPin result', { itemId, isPinned: result?.isPinned });
+      return result;
     },
     []
   );
 
   const toggleItemDailyHighlight = useCallback(
     async (itemId: string, isDailyHighlight: boolean): Promise<LocalItem | null> => {
-      return repoToggleItemDailyHighlight(itemId, isDailyHighlight);
+      console.log('[useLocalItemMutations] toggleItemDailyHighlight called', { itemId, isDailyHighlight });
+      const result = await repoToggleItemDailyHighlight(itemId, isDailyHighlight);
+      console.log('[useLocalItemMutations] toggleItemDailyHighlight result', { itemId, isDailyHighlight: result?.isDailyHighlight });
+      return result;
     },
     []
   );

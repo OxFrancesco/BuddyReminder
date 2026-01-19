@@ -38,6 +38,8 @@ export default defineSchema({
     executionPolicy: v.optional(v.union(v.literal("manual"), v.literal("auto"))),
     agentRunIds: v.optional(v.array(v.string())),
 
+    updatedAt: v.optional(v.number()),
+
     // Local-first sync metadata
     localId: v.optional(v.string()),
   })
