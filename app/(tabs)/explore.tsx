@@ -67,12 +67,7 @@ export default function TabTwoScreen() {
 
         <ThemedView style={[styles.settingsSection, { backgroundColor: colors.backgroundSecondary, borderColor: colors.icon }]}>
           <View style={styles.syncOption}>
-            <View style={styles.syncInfo}>
-              <ThemedText type="defaultSemiBold">Cloud Sync</ThemedText>
-              <ThemedText style={[styles.syncDescription, { color: colors.icon }]}>
-                {syncMode === 'cloud' ? 'Enabled' : 'Disabled'}
-              </ThemedText>
-            </View>
+            <ThemedText type="defaultSemiBold">Cloud Sync</ThemedText>
             <Switch
               value={syncMode === 'cloud'}
               onValueChange={(value) => setSyncMode(value ? 'cloud' : 'local')}
@@ -165,13 +160,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-  },
-  syncInfo: {
-    flex: 1,
-  },
-  syncDescription: {
-    fontSize: 12,
-    marginTop: 2,
   },
   section: {
     marginTop: 24,
