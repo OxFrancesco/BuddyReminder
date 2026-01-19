@@ -2,6 +2,14 @@
 
 ## 2026-01-19
 
+### Cloud Sync Toggle
+- Added sync settings context for managing cloud/local sync mode
+- Created cloud sync toggle switch in profile settings
+- Updated sync engine to respect cloud sync preference
+- Set cloud sync to disabled by default for new users
+- Sync preference persists in AsyncStorage
+- Simple "Enabled/Disabled" status display
+
 ### Agent Task Execution Foundation (In Progress)
 - Created agent execution infrastructure with Daytona workspace integration
 - Added agent icon button in home screen header for spawning OpenCode instances
@@ -10,6 +18,7 @@
 - Added agent detail screen for viewing execution results
 - Integrated with existing task type in items schema
 - Foundation laid for delegating tasks to AI agents in sandboxed environments
+- Comprehensive code review completed with security and performance considerations
 
 ## 2026-01-19 (Earlier)
 
