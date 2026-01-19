@@ -1,5 +1,7 @@
 import { useQuery } from 'convex/react';
 import { FlatList, StyleSheet, View, TouchableOpacity, Text } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { api } from '../convex/_generated/api';
 import { ThemedView } from './themed-view';
 import { ThemedText } from './themed-text';
@@ -22,6 +24,7 @@ export default function ItemsList() {
   const items = useQuery(api.items.getUserItems, isSignedIn ? {} : "skip");
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const insets = useSafeAreaInsets();
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -48,19 +51,10 @@ export default function ItemsList() {
   };
 
   const renderItem = ({ item }: { item: Item }) => (
-    <TouchableOpacity style={[styles.itemContainer, { borderColor: colors.icon }]}>
-      <View style={styles.itemHeader}>
-        <View style={styles.typeIndicator}>
-          <Text style={styles.typeIcon}>{getTypeIcon(item.type)}</Text>
-          <Text style={[styles.typeText, { color: getTypeColor(item.type) }]}>
-            {item.type}
-          </Text>
-        </View>
-        <Text style={[styles.statusText, { color: colors.icon }]}>
-          {item.status}
-        </Text>
-      </View>
-      
+    <TouchableOpacity 
+      style={[styles.itemContainer, { borderColor: colors.icon }]}
+      onPress={() => router.push(`/modal?itemId=${item._id}`)}
+    >
       <ThemedText type="defaultSemiBold" style={styles.title}>
         {item.title}
       </ThemedText>
@@ -77,9 +71,17 @@ export default function ItemsList() {
         </Text>
       )}
       
-      <Text style={[styles.createdTime, { color: colors.icon }]}>
-        Created {new Date(item._creationTime).toLocaleDateString()}
-      </Text>
+      <View style={styles.itemFooter}>
+        <Text style={[styles.createdTime, { color: colors.icon }]}>
+          Created {new Date(item._creationTime).toLocaleDateString()}
+        </Text>
+        <View style={styles.typeIndicator}>
+          <Text style={styles.typeIcon}>{getTypeIcon(item.type)}</Text>
+          <Text style={[styles.typeText, { color: getTypeColor(item.type) }]}>
+            {item.type}
+          </Text>
+        </View>
+      </View>
     </TouchableOpacity>
   );
 
@@ -118,7 +120,7 @@ export default function ItemsList() {
       data={items}
       renderItem={renderItem}
       keyExtractor={(item) => item._id}
-      contentContainerStyle={styles.listContainer}
+      contentContainerStyle={[styles.listContainer, { paddingTop: insets.top + 16 }]}
       showsVerticalScrollIndicator={false}
     />
   );
@@ -159,11 +161,11 @@ const styles = StyleSheet.create({
     padding: 16,
     marginBottom: 12,
   },
-  itemHeader: {
+  itemFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 8,
+    marginTop: 8,
   },
   typeIndicator: {
     flexDirection: 'row',

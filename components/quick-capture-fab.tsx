@@ -31,7 +31,7 @@ export default function QuickCaptureFAB() {
 const styles = StyleSheet.create({
   fab: {
     position: 'absolute',
-    bottom: 100, // Above tab bar
+    bottom: 30,
     right: 20,
     width: 56,
     height: 56,

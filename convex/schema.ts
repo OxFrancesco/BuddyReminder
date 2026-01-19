@@ -15,6 +15,7 @@ export default defineSchema({
     title: v.string(),
     body: v.optional(v.string()),
     status: v.union(v.literal("open"), v.literal("done"), v.literal("archived")),
+    isPinned: v.optional(v.boolean()),
     
     // Reminder fields
     triggerAt: v.optional(v.number()),

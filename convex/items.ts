@@ -18,6 +18,7 @@ export const getUserItems = query({
       title: v.string(),
       body: v.optional(v.string()),
       status: v.union(v.literal("open"), v.literal("done"), v.literal("archived")),
+      isPinned: v.optional(v.boolean()),
       triggerAt: v.optional(v.number()),
       timezone: v.optional(v.string()),
       repeatRule: v.optional(v.string()),
@@ -99,6 +100,7 @@ export const createItem = mutation({
     type: v.union(v.literal("note"), v.literal("reminder"), v.literal("task")),
     title: v.string(),
     body: v.optional(v.string()),
+    isPinned: v.optional(v.boolean()),
     triggerAt: v.optional(v.number()),
     timezone: v.optional(v.string()),
     repeatRule: v.optional(v.string()),
@@ -133,6 +135,7 @@ export const createItem = mutation({
       title: args.title,
       body: args.body,
       status: "open",
+      isPinned: args.isPinned,
       triggerAt: args.triggerAt,
       timezone: args.timezone,
       repeatRule: args.repeatRule,
@@ -140,6 +143,49 @@ export const createItem = mutation({
       executionPolicy: args.executionPolicy || "manual",
       agentRunIds: [],
     });
+  },
+});
+
+/**
+ * Update an item's content
+ */
+export const updateItem = mutation({
+  args: {
+    itemId: v.id("items"),
+    title: v.optional(v.string()),
+    body: v.optional(v.string()),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+
+    if (item.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+
+    const updates: any = {};
+    if (args.title !== undefined) updates.title = args.title;
+    if (args.body !== undefined) updates.body = args.body;
+
+    await ctx.db.patch(args.itemId, updates);
+    return null;
   },
 });
 
@@ -178,6 +224,47 @@ export const updateItemStatus = mutation({
 
     await ctx.db.patch(args.itemId, {
       status: args.status,
+    });
+
+    return null;
+  },
+});
+
+/**
+ * Toggle item pin status
+ */
+export const toggleItemPin = mutation({
+  args: {
+    itemId: v.id("items"),
+    isPinned: v.boolean(),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+
+    if (item.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+
+    await ctx.db.patch(args.itemId, {
+      isPinned: args.isPinned,
     });
 
     return null;

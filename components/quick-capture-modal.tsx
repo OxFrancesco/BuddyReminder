@@ -35,6 +35,7 @@ interface ParsedInput {
 
 export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModalProps) {
   const [input, setInput] = useState('');
+  const [isPinned, setIsPinned] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -104,14 +105,22 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
     try {
       const parsed = parseInput(input);
       
-      await createItem({
+      const itemId = await createItem({
         type: parsed.type,
         title: parsed.title,
+        isPinned: isPinned,
         triggerAt: parsed.triggerAt,
         taskSpec: parsed.taskSpec,
       });
       
+      // Schedule sticky notification if pinned
+      if (isPinned && parsed.type === 'note') {
+        const { schedulePinnedNotification } = await import('@/lib/notifications');
+        await schedulePinnedNotification(itemId, parsed.title);
+      }
+      
       setInput('');
+      setIsPinned(false);
       onClose();
     } catch (error) {
       Alert.alert('Error', 'Failed to save item. Please try again.');
@@ -127,9 +136,9 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
 
   const getTypeColor = (type: ItemType) => {
     switch (type) {
-      case 'note': return '#6B7280';
-      case 'reminder': return '#F59E0B';
-      case 'task': return '#8B5CF6';
+      case 'note': return colors.textSecondary;
+      case 'reminder': return colors.warning;
+      case 'task': return colors.tint;
       default: return colors.text;
     }
   };
@@ -163,22 +172,42 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
           
           <TouchableOpacity 
             onPress={handleSave} 
-            style={[styles.saveButton, { opacity: input.trim() ? 1 : 0.5 }]}
+            style={styles.saveButton}
             disabled={!input.trim() || isLoading}
           >
-            <Text style={styles.saveText}>
+            <Text style={[styles.saveText, { 
+              color: colors.tint,
+              opacity: input.trim() ? 1 : 0.5 
+            }]}>
               {isLoading ? 'Saving...' : 'Save'}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.content}>
-          <View style={styles.typePreview}>
+          <View style={[styles.typePreview, { backgroundColor: colors.backgroundSecondary }]}>
             <Text style={styles.typeIcon}>{getTypeIcon(getPreviewType())}</Text>
             <Text style={[styles.typeText, { color: getTypeColor(getPreviewType()) }]}>
               {getPreviewType().charAt(0).toUpperCase() + getPreviewType().slice(1)}
             </Text>
           </View>
+
+          {getPreviewType() === 'note' && (
+            <TouchableOpacity 
+              style={[styles.pinToggle, { 
+                backgroundColor: isPinned ? colors.tint : colors.backgroundSecondary,
+                borderColor: colors.border,
+              }]}
+              onPress={() => setIsPinned(!isPinned)}
+            >
+              <Text style={styles.pinIcon}>{isPinned ? '📌' : '📍'}</Text>
+              <Text style={[styles.pinText, { 
+                color: isPinned ? '#FFFFFF' : colors.text 
+              }]}>
+                {isPinned ? 'Pinned to notifications' : 'Pin to notifications'}
+              </Text>
+            </TouchableOpacity>
+          )}
 
           <TextInput
             style={[styles.input, { 
@@ -196,7 +225,7 @@ export default function QuickCaptureModal({ visible, onClose }: QuickCaptureModa
             onSubmitEditing={handleSave}
           />
 
-          <View style={styles.hints}>
+          <View style={[styles.hints, { backgroundColor: colors.backgroundSecondary }]}>
             <ThemedText style={styles.hintText}>
               💡 Try: "Remind me to call mom at 3pm" or "Agent: summarize this PDF"
             </ThemedText>
@@ -218,8 +247,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 60,
     paddingBottom: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
   },
   cancelButton: {
     padding: 8,
@@ -228,13 +255,10 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   saveButton: {
-    backgroundColor: '#0a7ea4',
     paddingHorizontal: 16,
     paddingVertical: 8,
-    borderRadius: 8,
   },
   saveText: {
-    color: 'white',
     fontSize: 16,
     fontWeight: '600',
   },
@@ -248,7 +272,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     paddingHorizontal: 12,
     paddingVertical: 8,
-    backgroundColor: '#F3F4F6',
     borderRadius: 8,
     alignSelf: 'flex-start',
   },
@@ -260,18 +283,34 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+  pinToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+  },
+  pinIcon: {
+    fontSize: 16,
+    marginRight: 8,
+  },
+  pinText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
   input: {
     borderWidth: 1,
     borderRadius: 12,
-    padding: 16,
+    padding: 8,
     fontSize: 16,
-    minHeight: 120,
+    height: 40,
     textAlignVertical: 'top',
   },
   hints: {
     marginTop: 16,
     padding: 12,
-    backgroundColor: '#F9FAFB',
     borderRadius: 8,
   },
   hintText: {
