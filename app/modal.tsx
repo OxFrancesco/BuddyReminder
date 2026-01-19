@@ -12,6 +12,7 @@ import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import RescheduleModal from "@/components/reschedule-modal";
+import AgentModal from "@/components/agent-modal";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useLocalItem, useLocalItemMutations } from "@/hooks/use-local-items";
@@ -19,6 +20,7 @@ import {
   scheduleStickyNotification,
   cancelItemNotification,
 } from "@/lib/notification-manager";
+import { Id } from "@/convex/_generated/dataModel";
 
 export default function ModalScreen() {
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
@@ -39,6 +41,7 @@ export default function ModalScreen() {
   const [isPinned, setIsPinned] = useState(false);
   const [isDailyHighlight, setIsDailyHighlight] = useState(false);
   const [showReschedulePicker, setShowReschedulePicker] = useState(false);
+  const [showAgentModal, setShowAgentModal] = useState(false);
 
   useEffect(() => {
     if (item) {
@@ -258,6 +261,19 @@ export default function ModalScreen() {
           </TouchableOpacity>
         )}
 
+        {item.type === "task" && (
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() => setShowAgentModal(true)}
+          >
+            <ThemedText style={styles.menuLabel}>Run with Agent</ThemedText>
+            <View style={styles.agentButtonContent}>
+              <IconSymbol name="cpu" size={18} color={colors.typeTask} />
+              <IconSymbol name="chevron.right" size={20} color={colors.icon} />
+            </View>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={styles.menuItem} onPress={handleDelete}>
           <ThemedText style={styles.menuLabel}>Delete</ThemedText>
           <ThemedText
@@ -289,6 +305,15 @@ export default function ModalScreen() {
         itemId={showReschedulePicker && item ? item.id : null}
         onClose={() => setShowReschedulePicker(false)}
       />
+
+      {showAgentModal && item && item.convexId && (
+        <AgentModal
+          taskId={item.convexId as Id<"items">}
+          taskTitle={item.title}
+          taskGoal={item.taskSpec?.goal}
+          onClose={() => setShowAgentModal(false)}
+        />
+      )}
     </ThemedView>
   );
 }
@@ -363,5 +388,10 @@ const styles = StyleSheet.create({
   saveButtonText: {
     color: "white",
     fontWeight: "600",
+  },
+  agentButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
 });

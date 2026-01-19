@@ -36,6 +36,7 @@ function RootLayoutNav() {
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
         <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Item Details' }} />
+        <Stack.Screen name="agent" options={{ presentation: 'modal', headerShown: false, title: 'Active Agents' }} />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

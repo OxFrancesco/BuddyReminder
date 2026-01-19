@@ -2,6 +2,17 @@
 
 ## 2026-01-19
 
+### Agent Task Execution Foundation (In Progress)
+- Created agent execution infrastructure with Daytona workspace integration
+- Added agent icon button in home screen header for spawning OpenCode instances
+- Implemented agent modal with loading states and workspace URL display
+- Created Convex backend function for agent workspace provisioning
+- Added agent detail screen for viewing execution results
+- Integrated with existing task type in items schema
+- Foundation laid for delegating tasks to AI agents in sandboxed environments
+
+## 2026-01-19 (Earlier)
+
 ### Theme System Implementation
 - Created comprehensive theme context with persistent storage using AsyncStorage
 - Updated color scheme hook to use theme context instead of system-only detection

@@ -21,6 +21,8 @@ import RescheduleModal from "./reschedule-modal";
 import { useLocalItems, useLocalItemMutations } from "@/hooks/use-local-items";
 import { LocalItem } from "@/db/types";
 import { cancelItemNotification } from "@/lib/notification-manager";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export default function ItemsList() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -30,6 +32,10 @@ export default function ItemsList() {
   const colors = Colors[colorScheme ?? "light"];
   const insets = useSafeAreaInsets();
   const [rescheduleItemId, setRescheduleItemId] = useState<string | null>(null);
+
+  // Get active agent runs count
+  const activeAgentRuns = useQuery(api.agent.getActiveAgentRuns);
+  const activeAgentCount = activeAgentRuns?.length ?? 0;
 
   const getTypeIcon = (type: string) => {
     switch (type) {
@@ -257,6 +263,35 @@ export default function ItemsList() {
     );
   }
 
+  const renderHeader = () => (
+    <View style={styles.header}>
+      <ThemedText type="title" style={styles.headerTitle}>
+        Inbox
+      </ThemedText>
+      <TouchableOpacity
+        style={[
+          styles.agentButton,
+          {
+            backgroundColor: activeAgentCount > 0 ? colors.typeTask : colors.backgroundSecondary,
+            borderColor: colors.border,
+          },
+        ]}
+        onPress={() => router.push("/agent")}
+      >
+        <IconSymbol
+          name="cpu"
+          size={20}
+          color={activeAgentCount > 0 ? colors.white : colors.icon}
+        />
+        {activeAgentCount > 0 && (
+          <View style={[styles.agentBadge, { backgroundColor: colors.success }]}>
+            <Text style={styles.agentBadgeText}>{activeAgentCount}</Text>
+          </View>
+        )}
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <FlatList
       data={items}
@@ -270,6 +305,7 @@ export default function ItemsList() {
       removeClippedSubviews={true}
       maxToRenderPerBatch={10}
       windowSize={10}
+      ListHeaderComponent={renderHeader}
       ListFooterComponent={
         <RescheduleModal
           itemId={rescheduleItemId}
@@ -306,6 +342,40 @@ const styles = StyleSheet.create({
   listContainer: {
     padding: 16,
     paddingBottom: 120, // Space for FAB
+  },
+  header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  headerTitle: {
+    fontSize: 28,
+    fontWeight: "700",
+  },
+  agentButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
+  },
+  agentBadge: {
+    position: "absolute",
+    top: -4,
+    right: -4,
+    width: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  agentBadgeText: {
+    color: "#000",
+    fontSize: 11,
+    fontWeight: "700",
   },
   itemContainer: {
     marginBottom: 12,

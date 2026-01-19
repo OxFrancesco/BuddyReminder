@@ -63,10 +63,15 @@ export default defineSchema({
     error: v.optional(v.string()),
     startedAt: v.optional(v.number()),
     endedAt: v.optional(v.number()),
+    // Daytona sandbox fields
+    sandboxId: v.optional(v.string()),
+    previewUrl: v.optional(v.string()),
+    sessionId: v.optional(v.string()),
   })
     .index("by_task", ["taskId"])
     .index("by_user", ["userId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_sandbox", ["sandboxId"]),
 
   attachments: defineTable({
     itemId: v.id("items"),
