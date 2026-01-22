@@ -14,13 +14,29 @@ export default function GesturesHelpScreen() {
 
   return (
     <>
-      <Stack.Screen options={{ title: 'Swipe Gestures', presentation: 'modal' }} />
-      <ThemedView style={[styles.container, { paddingTop: insets.top }]}>
+      <Stack.Screen options={{ title: 'Gestures', presentation: 'modal' }} />
+      <ThemedView style={styles.container}>
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-          <ThemedText type="title" style={styles.title}>Swipe Gestures</ThemedText>
+          <ThemedText type="title" style={styles.title}>Gestures</ThemedText>
           <ThemedText style={styles.subtitle}>
-            Quickly manage your items with simple swipe gestures
+            Quickly manage your items with simple gestures
           </ThemedText>
+
+          <View style={[styles.gestureCard, { backgroundColor: colors.backgroundSecondary }]}>
+            <View style={styles.gestureHeader}>
+              <View style={[styles.iconContainer, { backgroundColor: colors.tint }]}>
+                <IconSymbol name="plus.circle.fill" size={32} color={colors.white} />
+              </View>
+              <ThemedText type="subtitle">Pinch</ThemedText>
+            </View>
+            <ThemedText style={styles.gestureDescription}>
+              Pinch anywhere on the inbox to quickly add a new task, note, or reminder.
+            </ThemedText>
+            <View style={[styles.demoBox, { borderColor: colors.border }]}>
+              <ThemedText style={styles.demoText}>Pinch to zoom</ThemedText>
+              <ThemedText style={styles.demoAction}>Add Task</ThemedText>
+            </View>
+          </View>
 
           <View style={[styles.gestureCard, { backgroundColor: colors.backgroundSecondary }]}>
             <View style={styles.gestureHeader}>

@@ -459,3 +459,24 @@ export async function getItemsWithNotifications(clerkUserId: string): Promise<Lo
   );
   return rows.map(rowToItem);
 }
+
+// Get all convexIds for synced items (used to detect remote deletions)
+export async function getAllSyncedConvexIds(clerkUserId: string): Promise<string[]> {
+  const db = await getDatabase();
+  const rows = await db.getAllAsync<{ convexId: string }>(
+    'SELECT convexId FROM items WHERE clerkUserId = ? AND convexId IS NOT NULL AND deletedAt IS NULL',
+    [clerkUserId]
+  );
+  return rows.map((row) => row.convexId);
+}
+
+// Soft delete an item by its convexId (used when remote deletion detected)
+export async function softDeleteByConvexId(convexId: string): Promise<void> {
+  const db = await getDatabase();
+  const now = Date.now();
+  await db.runAsync(
+    'UPDATE items SET deletedAt = ?, updatedAt = ?, syncStatus = ? WHERE convexId = ?',
+    [now, now, 'synced', convexId]
+  );
+  notifyListeners();
+}

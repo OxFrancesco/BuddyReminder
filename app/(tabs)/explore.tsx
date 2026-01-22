@@ -29,7 +29,7 @@ export default function TabTwoScreen() {
             style={styles.avatar}
           />
         )}
-        <ThemedText type="title" style={styles.title}>Profile</ThemedText>
+        <ThemedText type="title" style={styles.title}>Gesture</ThemedText>
         {user?.fullName && (
           <ThemedText style={styles.name}>{user.fullName}</ThemedText>
         )}
@@ -38,27 +38,27 @@ export default function TabTwoScreen() {
           <ThemedText type="defaultSemiBold" style={styles.sectionTitle}>Appearance</ThemedText>
           
           <View style={styles.themeOptions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.themeButton, { borderColor: colors.icon }, themeMode === 'system' && { backgroundColor: colors.tint }]}
               onPress={() => setThemeMode('system')}
             >
-              <ThemedText style={[styles.themeButtonText, themeMode === 'system' && { color: 'white' }]}>
+              <ThemedText style={[styles.themeButtonText, themeMode === 'system' && { color: colors.primaryForeground }]}>
                 Auto
               </ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.themeButton, { borderColor: colors.icon }, themeMode === 'light' && { backgroundColor: colors.tint }]}
               onPress={() => setThemeMode('light')}
             >
-              <ThemedText style={[styles.themeButtonText, themeMode === 'light' && { color: 'white' }]}>
+              <ThemedText style={[styles.themeButtonText, themeMode === 'light' && { color: colors.primaryForeground }]}>
                 Light
               </ThemedText>
             </TouchableOpacity>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={[styles.themeButton, { borderColor: colors.icon }, themeMode === 'dark' && { backgroundColor: colors.tint }]}
               onPress={() => setThemeMode('dark')}
             >
-              <ThemedText style={[styles.themeButtonText, themeMode === 'dark' && { color: 'white' }]}>
+              <ThemedText style={[styles.themeButtonText, themeMode === 'dark' && { color: colors.primaryForeground }]}>
                 Dark
               </ThemedText>
             </TouchableOpacity>
@@ -71,8 +71,8 @@ export default function TabTwoScreen() {
             <Switch
               value={syncMode === 'cloud'}
               onValueChange={(value) => setSyncMode(value ? 'cloud' : 'local')}
-              trackColor={{ false: colors.muted, true: colors.tint }}
-              thumbColor="#fff"
+              trackColor={{ false: colors.switchTrackInactive, true: colors.tint }}
+              thumbColor={syncMode === 'cloud' ? colors.switchThumbActive : colors.switchThumbInactive}
             />
           </View>
         </ThemedView>
@@ -80,12 +80,24 @@ export default function TabTwoScreen() {
         <View style={styles.section}>
           <TouchableOpacity 
             style={[styles.menuItem, { backgroundColor: colors.backgroundSecondary }]}
+            onPress={() => router.push('/card-customization' as any)}
+          >
+            <IconSymbol name="paintbrush" size={24} color={colors.tint} />
+            <View style={styles.menuText}>
+              <ThemedText type="defaultSemiBold">Card Customization</ThemedText>
+              <ThemedText style={styles.menuDescription}>Customize icons and colors</ThemedText>
+            </View>
+            <IconSymbol name="chevron.right" size={20} color={colors.icon} />
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.menuItem, { backgroundColor: colors.backgroundSecondary }]}
             onPress={() => router.push('/gestures-help' as any)}
           >
             <IconSymbol name="hand.draw" size={24} color={colors.tint} />
             <View style={styles.menuText}>
-              <ThemedText type="defaultSemiBold">Swipe Gestures</ThemedText>
-              <ThemedText style={styles.menuDescription}>Learn how to use swipe actions</ThemedText>
+              <ThemedText type="defaultSemiBold">Gestures</ThemedText>
+              <ThemedText style={styles.menuDescription}>Learn how to use gestures</ThemedText>
             </View>
             <IconSymbol name="chevron.right" size={20} color={colors.icon} />
           </TouchableOpacity>

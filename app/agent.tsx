@@ -53,7 +53,7 @@ export default function AgentScreen() {
         style={[styles.backButton, { backgroundColor: colors.tint }]}
         onPress={() => router.back()}
       >
-        <ThemedText style={styles.backButtonText}>Go Back</ThemedText>
+        <ThemedText style={[styles.backButtonText, { color: colors.primaryForeground }]}>Go Back</ThemedText>
       </TouchableOpacity>
     </ThemedView>
   );
@@ -72,7 +72,7 @@ export default function AgentScreen() {
             },
           ]}
         >
-          <ThemedText style={styles.statusText}>
+          <ThemedText style={[styles.statusText, { color: colors.text }]}>
             {item.status === "running" ? "Running" : "Starting..."}
           </ThemedText>
         </View>
@@ -96,9 +96,9 @@ export default function AgentScreen() {
             <IconSymbol
               name="externaldrive.connected.to.line.below"
               size={18}
-              color="#fff"
+              color={colors.primaryForeground}
             />
-            <ThemedText style={styles.actionButtonText}>Open</ThemedText>
+            <ThemedText style={[styles.actionButtonText, { color: colors.primaryForeground }]}>Open</ThemedText>
           </TouchableOpacity>
         )}
 
@@ -108,11 +108,11 @@ export default function AgentScreen() {
           disabled={stoppingId === item._id || !item.sandboxId}
         >
           {stoppingId === item._id ? (
-            <ActivityIndicator color="#fff" size="small" />
+            <ActivityIndicator color={colors.primaryForeground} size="small" />
           ) : (
             <>
-              <IconSymbol name="stop.fill" size={18} color="#fff" />
-              <ThemedText style={styles.actionButtonText}>Stop</ThemedText>
+              <IconSymbol name="stop.fill" size={18} color={colors.primaryForeground} />
+              <ThemedText style={[styles.actionButtonText, { color: colors.primaryForeground }]}>Stop</ThemedText>
             </>
           )}
         </TouchableOpacity>
@@ -122,7 +122,7 @@ export default function AgentScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <View style={styles.header}>
+      <View style={[styles.header, { borderBottomColor: colors.overlayLight }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backArrow}>
           <IconSymbol name="chevron.right" size={24} color={colors.text} style={{ transform: [{ rotate: '180deg' }] }} />
         </TouchableOpacity>
@@ -160,7 +160,6 @@ const styles = StyleSheet.create({
     padding: 16,
     paddingTop: 60,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.1)",
   },
   backArrow: {
     padding: 8,
@@ -199,7 +198,6 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   backButtonText: {
-    color: "#fff",
     fontWeight: "600",
   },
   listContent: {
@@ -222,7 +220,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   statusText: {
-    color: "#000",
     fontSize: 12,
     fontWeight: "600",
   },
@@ -246,7 +243,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   actionButtonText: {
-    color: "#fff",
     fontWeight: "600",
     fontSize: 14,
   },

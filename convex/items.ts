@@ -37,7 +37,6 @@ export const getUserItems = query({
       })),
       executionPolicy: v.optional(v.union(v.literal("manual"), v.literal("auto"))),
       agentRunIds: v.optional(v.array(v.string())),
-      localId: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -152,7 +151,7 @@ export const createItem = mutation({
 });
 
 /**
- * Update an item
+ * Update an item (basic fields only - for backwards compatibility)
  */
 export const updateItem = mutation({
   args: {
@@ -186,10 +185,80 @@ export const updateItem = mutation({
       throw new Error("Unauthorized");
     }
 
-    const updates: any = { updatedAt: Date.now() };
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
     if (args.title !== undefined) updates.title = args.title;
     if (args.body !== undefined) updates.body = args.body;
     if (args.triggerAt !== undefined) updates.triggerAt = args.triggerAt;
+
+    await ctx.db.patch(args.itemId, updates);
+    return null;
+  },
+});
+
+/**
+ * Update an item with all fields (used by sync engine)
+ */
+export const updateItemFull = mutation({
+  args: {
+    itemId: v.id("items"),
+    title: v.optional(v.string()),
+    body: v.optional(v.string()),
+    status: v.optional(v.union(v.literal("open"), v.literal("done"), v.literal("archived"))),
+    isPinned: v.optional(v.boolean()),
+    isDailyHighlight: v.optional(v.boolean()),
+    triggerAt: v.optional(v.number()),
+    timezone: v.optional(v.string()),
+    repeatRule: v.optional(v.string()),
+    snoozeState: v.optional(v.object({
+      snoozedUntil: v.number(),
+      snoozeCount: v.number(),
+    })),
+    taskSpec: v.optional(v.object({
+      goal: v.string(),
+      inputs: v.optional(v.array(v.string())),
+      constraints: v.optional(v.array(v.string())),
+      allowedTools: v.optional(v.array(v.string())),
+      workspacePointers: v.optional(v.array(v.string())),
+    })),
+    executionPolicy: v.optional(v.union(v.literal("manual"), v.literal("auto"))),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+
+    if (item.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+
+    const updates: Record<string, unknown> = { updatedAt: Date.now() };
+    if (args.title !== undefined) updates.title = args.title;
+    if (args.body !== undefined) updates.body = args.body;
+    if (args.status !== undefined) updates.status = args.status;
+    if (args.isPinned !== undefined) updates.isPinned = args.isPinned;
+    if (args.isDailyHighlight !== undefined) updates.isDailyHighlight = args.isDailyHighlight;
+    if (args.triggerAt !== undefined) updates.triggerAt = args.triggerAt;
+    if (args.timezone !== undefined) updates.timezone = args.timezone;
+    if (args.repeatRule !== undefined) updates.repeatRule = args.repeatRule;
+    if (args.snoozeState !== undefined) updates.snoozeState = args.snoozeState;
+    if (args.taskSpec !== undefined) updates.taskSpec = args.taskSpec;
+    if (args.executionPolicy !== undefined) updates.executionPolicy = args.executionPolicy;
 
     await ctx.db.patch(args.itemId, updates);
     return null;

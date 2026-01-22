@@ -216,7 +216,7 @@ export default function QuickCaptureModal({
         style={[styles.container, { backgroundColor: colors.background }]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, { borderBottomColor: colors.border }]}>
           <TouchableOpacity onPress={onClose} style={styles.cancelButton}>
             <Text style={[styles.cancelText, { color: colors.text }]}>
               Cancel
@@ -363,7 +363,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingBottom: 20,
     borderBottomWidth: 2,
-    borderBottomColor: "#000000",
   },
   cancelButton: {
     padding: 8,

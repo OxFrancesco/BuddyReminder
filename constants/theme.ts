@@ -1,6 +1,6 @@
 /**
  * BuddyReminder color palette
- * Neobrutalist Style
+ * Stone/Indigo Theme
  */
 
 import { Platform } from "react-native";
@@ -8,167 +8,177 @@ import { Platform } from "react-native";
 export const Colors = {
   light: {
     // Core colors
-    text: "#000000",
-    textSecondary: "#000000",
-    background: "#FFFFFF",
-    backgroundSecondary: "#F3F4F6",
+    text: "#1e293b",
+    textSecondary: "#4b5563",
+    background: "#e7e5e4",
+    backgroundSecondary: "#f5f5f4",
 
-    // Primary - Purple/Violet
-    primary: "#a388ee",
-    primaryForeground: "#000000",
+    // Primary - Indigo
+    primary: "#6366f1",
+    primaryForeground: "#ffffff",
 
-    // Secondary - Cyan
-    secondary: "#67e8f9",
-    secondaryForeground: "#000000",
+    // Secondary - Stone
+    secondary: "#d6d3d1",
+    secondaryForeground: "#4b5563",
 
     // Muted
-    muted: "#e5e7eb",
-    mutedForeground: "#000000",
+    muted: "#e7e5e4",
+    mutedForeground: "#6b7280",
 
-    // Accent - Lime
-    accent: "#bef264",
-    accentForeground: "#000000",
+    // Accent - Pink tint
+    accent: "#f3e5f5",
+    accentForeground: "#374151",
 
     // Destructive - Red
-    destructive: "#f87171",
-    destructiveForeground: "#000000",
+    destructive: "#ef4444",
+    destructiveForeground: "#ffffff",
 
     // UI Elements
-    border: "#000000",
-    input: "#FFFFFF",
-    ring: "#000000",
+    border: "#d6d3d1",
+    input: "#d6d3d1",
+    ring: "#6366f1",
 
     // Card
-    card: "#FFFFFF",
-    cardForeground: "#000000",
+    card: "#f5f5f4",
+    cardForeground: "#1e293b",
 
     // Popover
-    popover: "#FFFFFF",
-    popoverForeground: "#000000",
+    popover: "#f5f5f4",
+    popoverForeground: "#1e293b",
 
     // Legacy aliases
-    tint: "#a388ee",
-    icon: "#000000",
+    tint: "#6366f1",
+    icon: "#1e293b",
     tabIconDefault: "#6b7280",
-    tabIconSelected: "#000000",
-    success: "#bef264",
-    warning: "#fcd34d",
-    error: "#f87171",
+    tabIconSelected: "#6366f1",
+    success: "#22c55e",
+    warning: "#f59e0b",
+    error: "#ef4444",
 
     // Semantic colors
-    highlight: "#fcd34d",
-    highlightForeground: "#000000",
+    highlight: "#f59e0b",
+    highlightForeground: "#ffffff",
 
     // Type colors
-    typeNote: "#e5e7eb",
-    typeReminder: "#fcd34d",
-    typeTask: "#a388ee",
+    typeNote: "#d6d3d1",
+    typeReminder: "#f59e0b",
+    typeTask: "#6366f1",
 
     // Chart colors
-    chart1: "#a388ee",
-    chart2: "#67e8f9",
-    chart3: "#bef264",
-    chart4: "#fcd34d",
-    chart5: "#f87171",
+    chart1: "#6366f1",
+    chart2: "#4f46e5",
+    chart3: "#4338ca",
+    chart4: "#3730a3",
+    chart5: "#312e81",
 
     // Sidebar
-    sidebar: "#FFFFFF",
-    sidebarForeground: "#000000",
-    sidebarPrimary: "#a388ee",
-    sidebarPrimaryForeground: "#000000",
-    sidebarAccent: "#bef264",
-    sidebarAccentForeground: "#000000",
-    sidebarBorder: "#000000",
-    sidebarRing: "#000000",
+    sidebar: "#d6d3d1",
+    sidebarForeground: "#1e293b",
+    sidebarPrimary: "#6366f1",
+    sidebarPrimaryForeground: "#ffffff",
+    sidebarAccent: "#f3e5f5",
+    sidebarAccentForeground: "#374151",
+    sidebarBorder: "#d6d3d1",
+    sidebarRing: "#6366f1",
 
     // Common
-    white: "#FFFFFF",
+    white: "#ffffff",
     black: "#000000",
-    shadow: "#000000",
-    switchThumbActive: "#000000",
-    switchThumbInactive: "#000000",
+    shadow: "rgba(156, 163, 175, 0.18)",
+    switchThumbActive: "#ffffff",
+    switchThumbInactive: "#ffffff",
+    switchTrackInactive: "#d6d3d1",
+
+    // Overlay colors
+    overlay: "rgba(0, 0, 0, 0.5)",
+    overlayLight: "rgba(0, 0, 0, 0.1)",
   },
   dark: {
     // Core colors
-    text: "#FFFFFF",
-    textSecondary: "#FFFFFF",
-    background: "#0f172a",
-    backgroundSecondary: "#1e293b",
+    text: "#e2e8f0",
+    textSecondary: "#d1d5db",
+    background: "#1e1b18",
+    backgroundSecondary: "#2c2825",
 
-    // Primary - Purple/Violet
-    primary: "#a388ee",
-    primaryForeground: "#000000",
+    // Primary - Indigo (lighter for dark mode)
+    primary: "#818cf8",
+    primaryForeground: "#1e1b18",
 
-    // Secondary - Cyan
-    secondary: "#67e8f9",
-    secondaryForeground: "#000000",
+    // Secondary - Dark stone
+    secondary: "#3a3633",
+    secondaryForeground: "#d1d5db",
 
     // Muted
-    muted: "#374151",
-    mutedForeground: "#FFFFFF",
+    muted: "#1f1c19",
+    mutedForeground: "#9ca3af",
 
-    // Accent - Lime
-    accent: "#bef264",
-    accentForeground: "#000000",
+    // Accent - Dark brown
+    accent: "#484441",
+    accentForeground: "#d1d5db",
 
     // Destructive - Red
-    destructive: "#f87171",
-    destructiveForeground: "#000000",
+    destructive: "#ef4444",
+    destructiveForeground: "#1e1b18",
 
     // UI Elements
-    border: "#FFFFFF",
-    input: "#1e293b",
-    ring: "#FFFFFF",
+    border: "#3a3633",
+    input: "#3a3633",
+    ring: "#818cf8",
 
     // Card
-    card: "#1e293b",
-    cardForeground: "#FFFFFF",
+    card: "#2c2825",
+    cardForeground: "#e2e8f0",
 
     // Popover
-    popover: "#1e293b",
-    popoverForeground: "#FFFFFF",
+    popover: "#2c2825",
+    popoverForeground: "#e2e8f0",
 
     // Legacy aliases
-    tint: "#a388ee",
-    icon: "#FFFFFF",
+    tint: "#818cf8",
+    icon: "#e2e8f0",
     tabIconDefault: "#9ca3af",
-    tabIconSelected: "#FFFFFF",
-    success: "#bef264",
-    warning: "#fcd34d",
-    error: "#f87171",
+    tabIconSelected: "#818cf8",
+    success: "#22c55e",
+    warning: "#f59e0b",
+    error: "#ef4444",
 
     // Semantic colors
-    highlight: "#fcd34d",
-    highlightForeground: "#000000",
+    highlight: "#f59e0b",
+    highlightForeground: "#1e1b18",
 
     // Type colors
-    typeNote: "#374151",
-    typeReminder: "#fcd34d",
-    typeTask: "#a388ee",
+    typeNote: "#3a3633",
+    typeReminder: "#f59e0b",
+    typeTask: "#818cf8",
 
     // Chart colors
-    chart1: "#a388ee",
-    chart2: "#67e8f9",
-    chart3: "#bef264",
-    chart4: "#fcd34d",
-    chart5: "#f87171",
+    chart1: "#818cf8",
+    chart2: "#6366f1",
+    chart3: "#4f46e5",
+    chart4: "#4338ca",
+    chart5: "#3730a3",
 
     // Sidebar
-    sidebar: "#0f172a",
-    sidebarForeground: "#FFFFFF",
-    sidebarPrimary: "#a388ee",
-    sidebarPrimaryForeground: "#000000",
-    sidebarAccent: "#bef264",
-    sidebarAccentForeground: "#000000",
-    sidebarBorder: "#FFFFFF",
-    sidebarRing: "#FFFFFF",
+    sidebar: "#3a3633",
+    sidebarForeground: "#e2e8f0",
+    sidebarPrimary: "#818cf8",
+    sidebarPrimaryForeground: "#1e1b18",
+    sidebarAccent: "#484441",
+    sidebarAccentForeground: "#d1d5db",
+    sidebarBorder: "#3a3633",
+    sidebarRing: "#818cf8",
 
     // Common
-    white: "#FFFFFF",
+    white: "#ffffff",
     black: "#000000",
-    shadow: "#000000",
-    switchThumbActive: "#FFFFFF",
-    switchThumbInactive: "#9ca3af",
+    shadow: "rgba(0, 0, 0, 0.18)",
+    switchThumbActive: "#ffffff",
+    switchThumbInactive: "#a8a29e",
+    switchTrackInactive: "#57534e",
+
+    // Overlay colors
+    overlay: "rgba(0, 0, 0, 0.5)",
+    overlayLight: "rgba(0, 0, 0, 0.1)",
   },
 };
 

@@ -39,9 +39,6 @@ export default defineSchema({
     agentRunIds: v.optional(v.array(v.string())),
 
     updatedAt: v.optional(v.number()),
-
-    // Local-first sync metadata
-    localId: v.optional(v.string()),
   })
     .index("by_user", ["userId"])
     .index("by_user_and_type", ["userId", "type"])
@@ -59,9 +56,18 @@ export default defineSchema({
       v.literal("cancelled")
     ),
     summary: v.optional(v.string()),
+    logs: v.optional(v.array(v.object({
+      timestamp: v.number(),
+      level: v.union(v.literal("info"), v.literal("error"), v.literal("warning")),
+      message: v.string(),
+    }))),
     logsRef: v.optional(v.string()),
     artifactsRef: v.optional(v.array(v.string())),
-    cost: v.optional(v.number()),
+    cost: v.optional(v.object({
+      sandboxRuntime: v.number(), // in cents
+      llmTokens: v.optional(v.number()),
+      total: v.number(), // in cents
+    })),
     error: v.optional(v.string()),
     startedAt: v.optional(v.number()),
     endedAt: v.optional(v.number()),
@@ -74,6 +80,24 @@ export default defineSchema({
     .index("by_user", ["userId"])
     .index("by_status", ["status"])
     .index("by_sandbox", ["sandboxId"]),
+
+  artifacts: defineTable({
+    runId: v.id("agentRuns"),
+    userId: v.id("users"),
+    filename: v.string(),
+    fileType: v.union(
+      v.literal("code"),
+      v.literal("image"),
+      v.literal("json"),
+      v.literal("text"),
+      v.literal("other")
+    ),
+    storageId: v.id("_storage"),
+    size: v.number(),
+    mimeType: v.optional(v.string()),
+  })
+    .index("by_run", ["runId"])
+    .index("by_user", ["userId"]),
 
   attachments: defineTable({
     itemId: v.id("items"),

@@ -7,13 +7,26 @@ import {
   upsertFromRemote,
   hardDeleteItem,
   getItemByConvexId,
+  getAllSyncedConvexIds,
+  softDeleteByConvexId,
 } from '@/db/items-repository';
 import { LocalItem } from '@/db/types';
 
 export interface SyncResult {
   pushed: number;
   pulled: number;
+  deleted: number;
   errors: string[];
+}
+
+// Check if user exists in Convex, return true if exists
+async function ensureUserExists(convex: ConvexReactClient): Promise<boolean> {
+  try {
+    const user = await convex.query(api.users.getCurrentUser, {});
+    return user !== null;
+  } catch {
+    return false;
+  }
 }
 
 // Push local changes to Convex
@@ -53,30 +66,20 @@ export async function pushChanges(
         await markAsSynced(item.id, convexId, item.updatedAt);
         pushed++;
       } else {
-        // Existing item - update in Convex
-        await convex.mutation(api.items.updateItem, {
+        // Existing item - update in Convex with single mutation
+        await convex.mutation(api.items.updateItemFull, {
           itemId: item.convexId as Id<'items'>,
           title: item.title,
           body: item.body || undefined,
-          triggerAt: item.triggerAt || undefined,
-        });
-
-        // Update status if changed
-        await convex.mutation(api.items.updateItemStatus, {
-          itemId: item.convexId as Id<'items'>,
           status: item.status,
-        });
-
-        // Update pin status
-        await convex.mutation(api.items.toggleItemPin, {
-          itemId: item.convexId as Id<'items'>,
           isPinned: item.isPinned,
-        });
-
-        // Update daily highlight
-        await convex.mutation(api.items.toggleItemDailyHighlight, {
-          itemId: item.convexId as Id<'items'>,
           isDailyHighlight: item.isDailyHighlight,
+          triggerAt: item.triggerAt || undefined,
+          timezone: item.timezone || undefined,
+          repeatRule: item.repeatRule || undefined,
+          snoozeState: item.snoozeState || undefined,
+          taskSpec: item.taskSpec || undefined,
+          executionPolicy: item.executionPolicy || undefined,
         });
 
         await markAsSynced(item.id, item.convexId, item.updatedAt);
@@ -96,14 +99,34 @@ export async function pushChanges(
 export async function pullChanges(
   convex: ConvexReactClient,
   clerkUserId: string
-): Promise<{ pulled: number; errors: string[] }> {
+): Promise<{ pulled: number; deleted: number; errors: string[] }> {
   let pulled = 0;
+  let deleted = 0;
   const errors: string[] = [];
 
   try {
     // Fetch all items from Convex
     const remoteItems = await convex.query(api.items.getUserItems, {});
+    const remoteConvexIds = new Set(remoteItems.map((item) => item._id as string));
 
+    // Get all local items that have been synced (have a convexId)
+    const localSyncedIds = await getAllSyncedConvexIds(clerkUserId);
+
+    // Detect remote deletions: items that exist locally but not remotely
+    for (const localConvexId of localSyncedIds) {
+      if (!remoteConvexIds.has(localConvexId)) {
+        try {
+          await softDeleteByConvexId(localConvexId);
+          deleted++;
+          console.log('[SyncEngine] Detected remote deletion:', localConvexId);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'Unknown error';
+          errors.push(`Failed to delete locally ${localConvexId}: ${message}`);
+        }
+      }
+    }
+
+    // Upsert remote items
     for (const remoteItem of remoteItems) {
       try {
         const remoteUpdatedAt = (remoteItem as { updatedAt?: number }).updatedAt;
@@ -115,7 +138,7 @@ export async function pullChanges(
           body: remoteItem.body,
           status: remoteItem.status,
           isPinned: remoteItem.isPinned,
-          isDailyHighlight: remoteItem.isDailyHighlight, // Fixed: was undefined
+          isDailyHighlight: remoteItem.isDailyHighlight,
           triggerAt: remoteItem.triggerAt,
           timezone: remoteItem.timezone,
           repeatRule: remoteItem.repeatRule,
@@ -136,7 +159,7 @@ export async function pullChanges(
     errors.push(`Failed to fetch remote items: ${message}`);
   }
 
-  return { pulled, errors };
+  return { pulled, deleted, errors };
 }
 
 // Full sync - push then pull
@@ -144,6 +167,18 @@ export async function syncAll(
   convex: ConvexReactClient,
   clerkUserId: string
 ): Promise<SyncResult> {
+  // Ensure user exists in Convex before attempting sync
+  const userExists = await ensureUserExists(convex);
+  if (!userExists) {
+    console.log('[SyncEngine] User not found in Convex, skipping sync');
+    return {
+      pushed: 0,
+      pulled: 0,
+      deleted: 0,
+      errors: ['User not found in Convex - sync skipped'],
+    };
+  }
+
   // Push first to ensure local changes don't get overwritten
   const pushResult = await pushChanges(convex, clerkUserId);
 
@@ -153,6 +188,7 @@ export async function syncAll(
   return {
     pushed: pushResult.pushed,
     pulled: pullResult.pulled,
+    deleted: pullResult.deleted,
     errors: [...pushResult.errors, ...pullResult.errors],
   };
 }

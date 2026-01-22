@@ -9,20 +9,30 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { Swipeable } from "react-native-gesture-handler";
+import { Swipeable, GestureDetector, Gesture } from "react-native-gesture-handler";
+import { runOnJS } from "react-native-reanimated";
 import { ThemedView } from "./themed-view";
 import { ThemedText } from "./themed-text";
 import { IconSymbol } from "./ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@clerk/clerk-expo";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import RescheduleModal from "./reschedule-modal";
+import QuickCaptureModal from "./quick-capture-modal";
 import { useLocalItems, useLocalItemMutations } from "@/hooks/use-local-items";
 import { LocalItem } from "@/db/types";
 import { cancelItemNotification } from "@/lib/notification-manager";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { useCardCustomization } from "@/hooks/use-card-customization";
+import {
+  calculateUrgency,
+  getUrgencyColor,
+  sortByUrgency,
+  useUrgencyRefresh,
+} from "@/hooks/use-urgency";
+import { UrgencyFill } from "./urgency-fill";
 
 export default function ItemsList() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -32,35 +42,34 @@ export default function ItemsList() {
   const colors = Colors[colorScheme ?? "light"];
   const insets = useSafeAreaInsets();
   const [rescheduleItemId, setRescheduleItemId] = useState<string | null>(null);
+  const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const { customizations } = useCardCustomization();
+
+  // Refresh urgency calculations every 60 seconds
+  const urgencyTick = useUrgencyRefresh(60000);
+
+  // Sort items: daily highlights first, then by soonest triggerAt
+  const sortedItems = useMemo(() => {
+    return sortByUrgency(items);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items, urgencyTick]);
 
   // Get active agent runs count
   const activeAgentRuns = useQuery(api.agent.getActiveAgentRuns);
   const activeAgentCount = activeAgentRuns?.length ?? 0;
 
+  // Pinch gesture to open quick capture
+  const pinchGesture = Gesture.Pinch()
+    .onEnd(() => {
+      runOnJS(setShowQuickCapture)(true);
+    });
+
   const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "note":
-        return "doc.text";
-      case "reminder":
-        return "bell";
-      case "task":
-        return "cpu";
-      default:
-        return "doc.text";
-    }
+    return customizations[type as keyof typeof customizations]?.icon || 'doc.text';
   };
 
   const getTypeColor = (type: string) => {
-    switch (type) {
-      case "note":
-        return colors.typeNote;
-      case "reminder":
-        return colors.typeReminder;
-      case "task":
-        return colors.typeTask;
-      default:
-        return colors.text;
-    }
+    return customizations[type as keyof typeof customizations]?.color || colors.text;
   };
 
   const formatTime = (timestamp?: number) => {
@@ -100,7 +109,7 @@ export default function ItemsList() {
         style={[
           styles.swipeAction,
           styles.completeAction,
-          { transform: [{ scale }], backgroundColor: colors.success },
+          { transform: [{ scale }], backgroundColor: colors.success, borderColor: colors.border },
         ]}
       >
         <IconSymbol
@@ -133,7 +142,7 @@ export default function ItemsList() {
         style={[
           styles.swipeAction,
           styles.rescheduleAction,
-          { transform: [{ scale }], backgroundColor: colors.primary },
+          { transform: [{ scale }], backgroundColor: colors.primary, borderColor: colors.border },
         ]}
       >
         <IconSymbol name="calendar" size={28} color={colors.white} />
@@ -144,57 +153,68 @@ export default function ItemsList() {
     );
   };
 
-  const renderItem = ({ item }: { item: LocalItem }) => (
-    <Swipeable
-      renderRightActions={(progress, dragX) =>
-        renderRightActions(progress, dragX)
-      }
-      renderLeftActions={(progress, dragX) =>
-        renderLeftActions(progress, dragX, item)
-      }
-      onSwipeableRightOpen={() => handleComplete(item)}
-      onSwipeableLeftOpen={() =>
-        item.type === "reminder" && handleReschedule(item.id)
-      }
-      overshootRight={false}
-      overshootLeft={false}
-    >
-      <TouchableOpacity
-        style={styles.itemContainer}
-        onPress={() => router.push(`/modal?itemId=${item.id}`)}
-        activeOpacity={0.9}
+  const renderItem = ({ item }: { item: LocalItem }) => {
+    const urgency = calculateUrgency(item.triggerAt);
+    const urgencyColor = getUrgencyColor(urgency.level, colors);
+
+    return (
+      <Swipeable
+        renderRightActions={(progress, dragX) =>
+          renderRightActions(progress, dragX)
+        }
+        renderLeftActions={(progress, dragX) =>
+          renderLeftActions(progress, dragX, item)
+        }
+        onSwipeableRightOpen={() => handleComplete(item)}
+        onSwipeableLeftOpen={() =>
+          item.type === "reminder" && handleReschedule(item.id)
+        }
+        overshootRight={false}
+        overshootLeft={false}
       >
-        <ThemedView
-          style={[
-            styles.neobrutalistCard,
-            {
-              backgroundColor: colors.card,
-              borderColor: colors.border,
-              borderWidth: 2,
-              shadowColor: colors.shadow,
-            },
-          ]}
+        <TouchableOpacity
+          style={styles.itemContainer}
+          onPress={() => router.push(`/modal?itemId=${item.id}`)}
+          activeOpacity={0.9}
         >
-          <View style={styles.itemContent}>
-            <View style={styles.itemHeader}>
-              <View
-                style={[
-                  styles.typeIndicator,
-                  {
-                    backgroundColor: getTypeColor(item.type),
-                    borderColor: colors.border,
-                    borderWidth: 2,
-                  },
-                ]}
-              >
-                <IconSymbol
-                  name={getTypeIcon(item.type)}
-                  size={20}
-                  color={colors.white}
-                />
-              </View>
-              <View style={styles.titleContainer}>
-                <View style={styles.titleRow}>
+          <ThemedView
+            style={[
+              styles.neobrutalistCard,
+              {
+                backgroundColor: colors.card,
+                borderColor: item.isDailyHighlight ? colors.highlight : colors.border,
+                borderWidth: 2,
+                shadowColor: colors.shadow,
+              },
+            ]}
+          >
+            {/* Liquid urgency fill - renders behind content */}
+            {item.triggerAt && (
+              <UrgencyFill
+                percentage={urgency.percentage}
+                level={urgency.level}
+                color={urgencyColor}
+              />
+            )}
+            <View style={styles.itemContent}>
+              <View style={styles.itemHeader}>
+                <View
+                  style={[
+                    styles.typeIndicator,
+                    {
+                      backgroundColor: getTypeColor(item.type),
+                      borderColor: colors.border,
+                      borderWidth: 2,
+                    },
+                  ]}
+                >
+                  <IconSymbol
+                    name={getTypeIcon(item.type)}
+                    size={20}
+                    color={colors.white}
+                  />
+                </View>
+                <View style={styles.titleContainer}>
                   <ThemedText
                     type="defaultSemiBold"
                     style={styles.title}
@@ -202,31 +222,24 @@ export default function ItemsList() {
                   >
                     {item.title}
                   </ThemedText>
-                  {item.isDailyHighlight && (
-                    <IconSymbol
-                      name="sparkles"
-                      size={16}
-                      color={colors.highlight}
-                    />
+                  {item.triggerAt && (
+                    <Text style={[styles.triggerTime, { color: colors.text }]}>
+                      {formatTime(item.triggerAt)}
+                    </Text>
                   )}
                 </View>
-                {item.triggerAt && (
-                  <Text style={[styles.triggerTime, { color: colors.text }]}>
-                    {formatTime(item.triggerAt)}
-                  </Text>
-                )}
-                {item.body && (
-                  <ThemedText style={styles.body} numberOfLines={1}>
-                    {item.body}
-                  </ThemedText>
-                )}
               </View>
+              {item.body && (
+                <ThemedText style={styles.body} numberOfLines={2}>
+                  {item.body}
+                </ThemedText>
+              )}
             </View>
-          </View>
-        </ThemedView>
-      </TouchableOpacity>
-    </Swipeable>
-  );
+          </ThemedView>
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
 
   if (!isLoaded || isLoading) {
     return (
@@ -285,7 +298,7 @@ export default function ItemsList() {
         />
         {activeAgentCount > 0 && (
           <View style={[styles.agentBadge, { backgroundColor: colors.success }]}>
-            <Text style={styles.agentBadgeText}>{activeAgentCount}</Text>
+            <Text style={[styles.agentBadgeText, { color: colors.text }]}>{activeAgentCount}</Text>
           </View>
         )}
       </TouchableOpacity>
@@ -293,26 +306,34 @@ export default function ItemsList() {
   );
 
   return (
-    <FlatList
-      data={items}
-      renderItem={renderItem}
-      keyExtractor={(item) => item.id}
-      contentContainerStyle={[
-        styles.listContainer,
-        { paddingTop: insets.top + 16 },
-      ]}
-      showsVerticalScrollIndicator={false}
-      removeClippedSubviews={true}
-      maxToRenderPerBatch={10}
-      windowSize={10}
-      ListHeaderComponent={renderHeader}
-      ListFooterComponent={
-        <RescheduleModal
-          itemId={rescheduleItemId}
-          onClose={() => setRescheduleItemId(null)}
+    <GestureDetector gesture={pinchGesture}>
+      <View style={{ flex: 1 }}>
+        <FlatList
+          data={sortedItems}
+          renderItem={renderItem}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={[
+            styles.listContainer,
+            { paddingTop: insets.top + 16 },
+          ]}
+          showsVerticalScrollIndicator={false}
+          removeClippedSubviews={true}
+          maxToRenderPerBatch={10}
+          windowSize={10}
+          ListHeaderComponent={renderHeader}
+          ListFooterComponent={
+            <RescheduleModal
+              itemId={rescheduleItemId}
+              onClose={() => setRescheduleItemId(null)}
+            />
+          }
         />
-      }
-    />
+        <QuickCaptureModal
+          visible={showQuickCapture}
+          onClose={() => setShowQuickCapture(false)}
+        />
+      </View>
+    </GestureDetector>
   );
 }
 
@@ -373,7 +394,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   agentBadgeText: {
-    color: "#000",
     fontSize: 11,
     fontWeight: "700",
   },
@@ -387,7 +407,6 @@ const styles = StyleSheet.create({
     height: "100%",
     borderRadius: 4,
     borderWidth: 2,
-    borderColor: "#000000",
   },
   completeAction: {
     marginLeft: 8,
@@ -406,15 +425,16 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 4, height: 4 },
     shadowOpacity: 1,
     shadowRadius: 0,
-    elevation: 0, // Elevation has blur, so we might skip it or accept it on Android
-    marginBottom: 4, // Space for shadow
+    elevation: 0,
+    marginBottom: 4,
+    overflow: 'hidden',
   },
   itemContent: {
     gap: 12,
   },
   itemHeader: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    alignItems: "center",
     gap: 12,
   },
   typeIndicator: {
@@ -431,23 +451,24 @@ const styles = StyleSheet.create({
   titleContainer: {
     flex: 1,
     gap: 4,
-  },
-  titleRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
+    minWidth: 0,
   },
   title: {
     fontSize: 16,
     lineHeight: 22,
+    flexShrink: 1,
   },
   triggerTime: {
     fontSize: 12,
     fontWeight: "500",
+    flexShrink: 1,
   },
   body: {
     fontSize: 14,
     opacity: 0.7,
     lineHeight: 18,
+    flexShrink: 1,
+    marginLeft: 52, // Align with title (icon width 40 + gap 12)
+    marginTop: 8,
   },
 });

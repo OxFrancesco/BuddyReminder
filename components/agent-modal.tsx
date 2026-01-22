@@ -16,6 +16,8 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import ArtifactViewer from "@/components/artifact-viewer";
+import LogViewer from "@/components/log-viewer";
 
 // Type for agent run
 type AgentRunStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
@@ -56,6 +58,8 @@ export default function AgentModal({
 
   const [isSpawning, setIsSpawning] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showArtifacts, setShowArtifacts] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
 
   const spawnSandbox = useAction(api.agent.spawnDaytonaSandbox);
   const stopSandbox = useAction(api.agent.stopDaytonaSandbox);
@@ -114,221 +118,293 @@ export default function AgentModal({
   if (!taskId) return null;
 
   return (
-    <Modal
-      visible={true}
-      animationType="slide"
-      transparent={true}
-      onRequestClose={onClose}
-    >
-      <View style={styles.overlay}>
-        <ThemedView
-          style={[
-            styles.container,
-            {
-              backgroundColor: colors.background,
-              borderColor: colors.border,
-            },
-          ]}
-        >
-          <View style={styles.header}>
-            <ThemedText style={styles.title}>Agent Runner</ThemedText>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <ThemedText style={{ color: colors.tint }}>Done</ThemedText>
-            </TouchableOpacity>
-          </View>
+    <>
+      <Modal
+        visible={true}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={onClose}
+      >
+        <View style={[styles.overlay, { backgroundColor: colors.overlay }]}>
+          <ThemedView
+            style={[
+              styles.container,
+              {
+                backgroundColor: colors.background,
+                borderColor: colors.border,
+              },
+            ]}
+          >
+            <View style={[styles.header, { borderBottomColor: colors.overlayLight }]}>
+              <ThemedText style={styles.title}>Agent Runner</ThemedText>
+              <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+                <ThemedText style={{ color: colors.tint }}>Done</ThemedText>
+              </TouchableOpacity>
+            </View>
 
-          <ScrollView style={styles.content}>
-            <ThemedView
-              style={[
-                styles.taskCard,
-                { backgroundColor: colors.backgroundSecondary },
-              ]}
-            >
-              <View style={styles.taskHeader}>
-                <IconSymbol name="cpu" size={20} color={colors.typeTask} />
-                <ThemedText style={styles.taskTitle} numberOfLines={2}>
-                  {taskTitle}
-                </ThemedText>
-              </View>
-              {taskGoal && (
-                <ThemedText style={[styles.taskGoal, { color: colors.icon }]}>
-                  Goal: {taskGoal}
-                </ThemedText>
-              )}
-            </ThemedView>
-
-            {error && (
+            <ScrollView style={styles.content}>
               <ThemedView
-                style={[styles.errorCard, { backgroundColor: colors.error }]}
+                style={[
+                  styles.taskCard,
+                  { backgroundColor: colors.backgroundSecondary },
+                ]}
               >
-                <ThemedText style={styles.errorText}>{error}</ThemedText>
-              </ThemedView>
-            )}
-
-            {activeRun ? (
-              <ThemedView style={styles.activeRunSection}>
-                <View style={styles.statusRow}>
-                  <View
-                    style={[
-                      styles.statusBadge,
-                      {
-                        backgroundColor:
-                          activeRun.status === "running"
-                            ? colors.success
-                            : colors.warning,
-                      },
-                    ]}
-                  >
-                    <ThemedText style={styles.statusText}>
-                      {activeRun.status === "running" ? "Running" : "Starting..."}
-                    </ThemedText>
-                  </View>
+                <View style={styles.taskHeader}>
+                  <IconSymbol name="cpu" size={20} color={colors.typeTask} />
+                  <ThemedText style={styles.taskTitle} numberOfLines={2}>
+                    {taskTitle}
+                  </ThemedText>
                 </View>
-
-                {activeRun.previewUrl && (
-                  <TouchableOpacity
-                    style={[
-                      styles.previewButton,
-                      { backgroundColor: colors.tint },
-                    ]}
-                    onPress={handleOpenPreview}
-                  >
-                    <IconSymbol
-                      name="externaldrive.connected.to.line.below"
-                      size={20}
-                      color="#fff"
-                    />
-                    <ThemedText style={styles.previewButtonText}>
-                      Open OpenCode
-                    </ThemedText>
-                  </TouchableOpacity>
-                )}
-
-                {activeRun.summary && (
-                  <ThemedText
-                    style={[styles.summaryText, { color: colors.icon }]}
-                  >
-                    {activeRun.summary}
+                {taskGoal && (
+                  <ThemedText style={[styles.taskGoal, { color: colors.icon }]}>
+                    Goal: {taskGoal}
                   </ThemedText>
                 )}
-
-                <TouchableOpacity
-                  style={[
-                    styles.stopButton,
-                    { backgroundColor: colors.error },
-                  ]}
-                  onPress={handleStopAgent}
-                  disabled={isSpawning}
-                >
-                  {isSpawning ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <IconSymbol name="stop.fill" size={20} color="#fff" />
-                      <ThemedText style={styles.stopButtonText}>
-                        Stop Agent
-                      </ThemedText>
-                    </>
-                  )}
-                </TouchableOpacity>
               </ThemedView>
-            ) : (
-              <ThemedView style={styles.spawnSection}>
-                <ThemedText
-                  style={[styles.infoText, { color: colors.icon }]}
-                >
-                  Spawn a Daytona sandbox with OpenCode to work on this task.
-                  The agent will have access to a full development environment.
-                </ThemedText>
 
-                <TouchableOpacity
-                  style={[
-                    styles.spawnButton,
-                    {
-                      backgroundColor: colors.tint,
-                      opacity: isSpawning ? 0.7 : 1,
-                    },
-                  ]}
-                  onPress={handleSpawnAgent}
-                  disabled={isSpawning}
+              {error && (
+                <ThemedView
+                  style={[styles.errorCard, { backgroundColor: colors.error }]}
                 >
-                  {isSpawning ? (
-                    <ActivityIndicator color="#fff" size="small" />
-                  ) : (
-                    <>
-                      <IconSymbol name="play.fill" size={20} color="#fff" />
-                      <ThemedText style={styles.spawnButtonText}>
-                        Start Agent
-                      </ThemedText>
-                    </>
-                  )}
-                </TouchableOpacity>
-              </ThemedView>
-            )}
+                  <ThemedText style={[styles.errorText, { color: colors.primaryForeground }]}>{error}</ThemedText>
+                </ThemedView>
+              )}
 
-            {agentRuns && agentRuns.length > 0 && (
-              <ThemedView style={styles.historySection}>
-                <ThemedText style={styles.historyTitle}>
-                  Previous Runs
-                </ThemedText>
-                {agentRuns
-                  .filter((run: AgentRunType) => run.status !== "running" && run.status !== "pending")
-                  .slice(0, 5)
-                  .map((run: AgentRunType) => (
-                    <ThemedView
-                      key={run._id}
+              {activeRun ? (
+                <ThemedView style={styles.activeRunSection}>
+                  <View style={styles.statusRow}>
+                    <View
                       style={[
-                        styles.historyItem,
+                        styles.statusBadge,
+                        {
+                          backgroundColor:
+                            activeRun.status === "running"
+                              ? colors.success
+                              : colors.warning,
+                        },
+                      ]}
+                    >
+                      <ThemedText style={[styles.statusText, { color: colors.text }]}>
+                        {activeRun.status === "running" ? "Running" : "Starting..."}
+                      </ThemedText>
+                    </View>
+                  </View>
+
+                  <View style={styles.actionRow}>
+                    {activeRun.previewUrl && (
+                      <TouchableOpacity
+                        style={[
+                          styles.actionButton,
+                          { backgroundColor: colors.tint },
+                        ]}
+                        onPress={handleOpenPreview}
+                      >
+                        <IconSymbol
+                          name="externaldrive.connected.to.line.below"
+                          size={20}
+                          color={colors.primaryForeground}
+                        />
+                        <ThemedText style={[styles.actionButtonText, { color: colors.primaryForeground }]}>
+                          Open
+                        </ThemedText>
+                      </TouchableOpacity>
+                    )}
+
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        { backgroundColor: colors.backgroundSecondary },
+                      ]}
+                      onPress={() => setShowLogs(true)}
+                    >
+                      <IconSymbol name="text.bubble" size={20} color={colors.tint} />
+                      <ThemedText style={[styles.actionButtonText, { color: colors.tint }]}>
+                        Logs
+                      </ThemedText>
+                    </TouchableOpacity>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        { backgroundColor: colors.backgroundSecondary },
+                      ]}
+                      onPress={() => setShowArtifacts(true)}
+                    >
+                      <IconSymbol name="doc" size={20} color={colors.tint} />
+                      <ThemedText style={[styles.actionButtonText, { color: colors.tint }]}>
+                        Artifacts
+                      </ThemedText>
+                    </TouchableOpacity>
+                  </View>
+
+                  {activeRun.summary && (
+                    <ThemedText
+                      style={[styles.summaryText, { color: colors.icon }]}
+                    >
+                      {activeRun.summary}
+                    </ThemedText>
+                  )}
+
+                  {activeRun.cost && (
+                    <ThemedView
+                      style={[
+                        styles.costCard,
                         { backgroundColor: colors.backgroundSecondary },
                       ]}
                     >
-                      <View style={styles.historyItemHeader}>
-                        <View
-                          style={[
-                            styles.historyStatusBadge,
-                            {
-                              backgroundColor:
-                                run.status === "completed"
-                                  ? colors.success
-                                  : run.status === "failed"
-                                  ? colors.error
-                                  : colors.icon,
-                            },
-                          ]}
-                        >
-                          <ThemedText style={styles.historyStatusText}>
-                            {run.status}
-                          </ThemedText>
-                        </View>
-                        <ThemedText
-                          style={[styles.historyDate, { color: colors.icon }]}
-                        >
-                          {new Date(run._creationTime).toLocaleDateString()}
+                      <View style={styles.costRow}>
+                        <ThemedText style={[styles.costLabel, { color: colors.icon }]}>
+                          Runtime Cost:
+                        </ThemedText>
+                        <ThemedText style={styles.costValue}>
+                          ${(activeRun.cost.sandboxRuntime / 100).toFixed(2)}
                         </ThemedText>
                       </View>
-                      {run.error && (
-                        <ThemedText
-                          style={[styles.historyError, { color: colors.error }]}
-                          numberOfLines={2}
-                        >
-                          {run.error}
+                      <View style={styles.costRow}>
+                        <ThemedText style={[styles.costLabel, { color: colors.icon }]}>
+                          Total:
                         </ThemedText>
-                      )}
+                        <ThemedText style={[styles.costValue, { fontWeight: "700" }]}>
+                          ${(activeRun.cost.total / 100).toFixed(2)}
+                        </ThemedText>
+                      </View>
                     </ThemedView>
-                  ))}
-              </ThemedView>
-            )}
-          </ScrollView>
-        </ThemedView>
-      </View>
-    </Modal>
+                  )}
+
+                  <TouchableOpacity
+                    style={[
+                      styles.stopButton,
+                      { backgroundColor: colors.error },
+                    ]}
+                    onPress={handleStopAgent}
+                    disabled={isSpawning}
+                  >
+                    {isSpawning ? (
+                      <ActivityIndicator color={colors.primaryForeground} size="small" />
+                    ) : (
+                      <>
+                        <IconSymbol name="stop.fill" size={20} color={colors.primaryForeground} />
+                        <ThemedText style={[styles.stopButtonText, { color: colors.primaryForeground }]}>
+                          Stop Agent
+                        </ThemedText>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </ThemedView>
+              ) : (
+                <ThemedView style={styles.spawnSection}>
+                  <ThemedText
+                    style={[styles.infoText, { color: colors.icon }]}
+                  >
+                    Spawn a Daytona sandbox with OpenCode to work on this task.
+                    The agent will have access to a full development environment.
+                  </ThemedText>
+
+                  <TouchableOpacity
+                    style={[
+                      styles.spawnButton,
+                      {
+                        backgroundColor: colors.tint,
+                        opacity: isSpawning ? 0.7 : 1,
+                      },
+                    ]}
+                    onPress={handleSpawnAgent}
+                    disabled={isSpawning}
+                  >
+                    {isSpawning ? (
+                      <ActivityIndicator color={colors.primaryForeground} size="small" />
+                    ) : (
+                      <>
+                        <IconSymbol name="play.fill" size={20} color={colors.primaryForeground} />
+                        <ThemedText style={[styles.spawnButtonText, { color: colors.primaryForeground }]}>
+                          Start Agent
+                        </ThemedText>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </ThemedView>
+              )}
+
+              {agentRuns && agentRuns.length > 0 && (
+                <ThemedView style={styles.historySection}>
+                  <ThemedText style={styles.historyTitle}>
+                    Previous Runs
+                  </ThemedText>
+                  {agentRuns
+                    .filter((run: AgentRunType) => run.status !== "running" && run.status !== "pending")
+                    .slice(0, 5)
+                    .map((run: AgentRunType) => (
+                      <TouchableOpacity
+                        key={run._id}
+                        style={[
+                          styles.historyItem,
+                          { backgroundColor: colors.backgroundSecondary },
+                        ]}
+                        onPress={() => {
+                          // TODO: Show artifacts for this run
+                        }}
+                      >
+                        <View style={styles.historyItemHeader}>
+                          <View
+                            style={[
+                              styles.historyStatusBadge,
+                              {
+                                backgroundColor:
+                                  run.status === "completed"
+                                    ? colors.success
+                                    : run.status === "failed"
+                                    ? colors.error
+                                    : colors.icon,
+                              },
+                            ]}
+                          >
+                            <ThemedText style={[styles.historyStatusText, { color: colors.primaryForeground }]}>
+                              {run.status}
+                            </ThemedText>
+                          </View>
+                          <ThemedText
+                            style={[styles.historyDate, { color: colors.icon }]}
+                          >
+                            {new Date(run._creationTime).toLocaleDateString()}
+                          </ThemedText>
+                        </View>
+                        {run.error && (
+                          <ThemedText
+                            style={[styles.historyError, { color: colors.error }]}
+                            numberOfLines={2}
+                          >
+                            {run.error}
+                          </ThemedText>
+                        )}
+                      </TouchableOpacity>
+                    ))}
+                </ThemedView>
+              )}
+            </ScrollView>
+          </ThemedView>
+        </View>
+      </Modal>
+
+      {showArtifacts && activeRun && (
+        <ArtifactViewer
+          runId={activeRun._id}
+          onClose={() => setShowArtifacts(false)}
+        />
+      )}
+
+      {showLogs && activeRun && (
+        <LogViewer
+          runId={activeRun._id}
+          onClose={() => setShowLogs(false)}
+        />
+      )}
+    </>
   );
 }
 
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
     justifyContent: "flex-end",
   },
   container: {
@@ -343,7 +419,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     padding: 16,
     borderBottomWidth: 1,
-    borderBottomColor: "rgba(0,0,0,0.1)",
   },
   title: {
     fontSize: 18,
@@ -380,7 +455,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   errorText: {
-    color: "#fff",
     fontSize: 14,
   },
   activeRunSection: {
@@ -396,9 +470,25 @@ const styles = StyleSheet.create({
     borderRadius: 16,
   },
   statusText: {
-    color: "#000",
     fontSize: 14,
     fontWeight: "600",
+  },
+  actionRow: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  actionButton: {
+    flex: 1,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 12,
+    borderRadius: 8,
+  },
+  actionButtonText: {
+    fontWeight: "600",
+    fontSize: 14,
   },
   previewButton: {
     flexDirection: "row",
@@ -409,13 +499,29 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   previewButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
   summaryText: {
     fontSize: 14,
     textAlign: "center",
+  },
+  costCard: {
+    padding: 12,
+    borderRadius: 8,
+    gap: 8,
+  },
+  costRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  costLabel: {
+    fontSize: 13,
+  },
+  costValue: {
+    fontSize: 14,
+    fontWeight: "600",
   },
   stopButton: {
     flexDirection: "row",
@@ -426,7 +532,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   stopButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -447,7 +552,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   spawnButtonText: {
-    color: "#fff",
     fontSize: 16,
     fontWeight: "600",
   },
@@ -475,7 +579,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   historyStatusText: {
-    color: "#fff",
     fontSize: 12,
     fontWeight: "500",
     textTransform: "capitalize",

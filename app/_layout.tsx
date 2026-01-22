@@ -1,27 +1,33 @@
-import { useEffect } from 'react';
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import { Stack } from 'expo-router';
-import { StatusBar } from 'expo-status-bar';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import 'react-native-reanimated';
+import { useEffect } from "react";
+import {
+  DarkTheme,
+  DefaultTheme,
+  ThemeProvider,
+} from "@react-navigation/native";
+import { Stack } from "expo-router";
+import { StatusBar } from "expo-status-bar";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+import "react-native-reanimated";
 
-import { useColorScheme } from '@/hooks/use-color-scheme';
-import AuthProvider from '@/components/auth-provider';
-import { ThemeProvider as CustomThemeProvider } from '@/contexts/theme-context';
-import { SyncSettingsProvider } from '@/contexts/sync-settings-context';
-import { DatabaseProvider } from '@/db/provider';
-import { SyncProvider } from '@/components/sync-provider';
+import { useColorScheme } from "@/hooks/use-color-scheme";
+import AuthProvider from "@/components/auth-provider";
+import { ThemeProvider as CustomThemeProvider } from "@/contexts/theme-context";
+import { SyncSettingsProvider } from "@/contexts/sync-settings-context";
+import { DatabaseProvider } from "@/db/provider";
+import { SyncProvider } from "@/components/sync-provider";
 import {
   setupNotificationChannels,
   setupNotificationResponseHandler,
-} from '@/lib/notification-manager';
+} from "@/lib/notification-manager";
+import { useAddCardWidget } from "@/hooks/use-add-card-widget";
 
 export const unstable_settings = {
-  anchor: '(tabs)',
+  anchor: "(tabs)",
 };
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
+  useAddCardWidget();
 
   useEffect(() => {
     // Setup notification channels (Android)
@@ -33,11 +39,21 @@ function RootLayoutNav() {
   }, []);
 
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+    <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
       <Stack>
-        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-        <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Item Details' }} />
-        <Stack.Screen name="agent" options={{ presentation: 'modal', headerShown: false, title: 'Active Agents' }} />
+        <Stack.Screen name="(tabs)" options={{ headerShown: false, title: "Back" }} />
+        <Stack.Screen
+          name="modal"
+          options={{ presentation: "modal", title: "Item Details" }}
+        />
+        <Stack.Screen
+          name="agent"
+          options={{
+            presentation: "modal",
+            headerShown: false,
+            title: "Active Agents",
+          }}
+        />
       </Stack>
       <StatusBar style="auto" />
     </ThemeProvider>

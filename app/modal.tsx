@@ -42,6 +42,8 @@ export default function ModalScreen() {
   const [isDailyHighlight, setIsDailyHighlight] = useState(false);
   const [showReschedulePicker, setShowReschedulePicker] = useState(false);
   const [showAgentModal, setShowAgentModal] = useState(false);
+  // Local copy of notificationId to avoid stale references when unpinning
+  const [localNotificationId, setLocalNotificationId] = useState<string | null>(null);
 
   // Track which item we've initialized for - only sync from db once per item
   const initializedForItemId = useRef<string | null>(null);
@@ -62,6 +64,7 @@ export default function ModalScreen() {
       setBody(item.body || "");
       setIsPinned(item.isPinned || false);
       setIsDailyHighlight(item.isDailyHighlight || false);
+      setLocalNotificationId(item.notificationId || null);
     }
   }, [item]);
 
@@ -99,23 +102,29 @@ export default function ModalScreen() {
     console.log('[Modal] handlePinToggle called with:', value);
     setIsPinned(value);
     if (item) {
-      console.log('[Modal] Calling toggleItemPin for item:', item.id);
+      console.log('[Modal] Calling toggleItemPin for item:', item.id, 'localNotificationId:', localNotificationId, 'item.notificationId:', item.notificationId);
       const result = await toggleItemPin(item.id, value);
       console.log('[Modal] toggleItemPin result:', result);
 
       // Handle notification
-      if (value && item.type === "note") {
+      if (value) {
         // Schedule sticky notification when pinning
         const notificationId = await scheduleStickyNotification(
           item.id,
           item.title,
         );
+        console.log('[Modal] Scheduled notification:', notificationId);
         if (notificationId) {
+          // Store locally to avoid stale reference when unpinning
+          setLocalNotificationId(notificationId);
           await setNotificationId(item.id, notificationId);
         }
-      } else if (!value && item.notificationId) {
-        // Cancel notification when unpinning
-        await cancelItemNotification(item.id, item.notificationId);
+      } else {
+        // Cancel notification when unpinning - use local ID first, fall back to item.notificationId
+        const notifId = localNotificationId ?? item.notificationId;
+        console.log('[Modal] Cancelling notification for item:', item.id, 'using notificationId:', notifId);
+        await cancelItemNotification(item.id, notifId);
+        setLocalNotificationId(null);
       }
     }
   };
@@ -224,7 +233,7 @@ export default function ModalScreen() {
           },
         ]}
       >
-        <ThemedView style={styles.menuItem}>
+        <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
           <ThemedText style={styles.menuLabel}>Type</ThemedText>
           <ThemedText
             style={[styles.typeText, { color: getTypeColor(item.type) }]}
@@ -233,24 +242,24 @@ export default function ModalScreen() {
           </ThemedText>
         </ThemedView>
 
-        <ThemedView style={styles.menuItem}>
+        <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
           <ThemedText style={styles.menuLabel}>Pin to notifications</ThemedText>
           <Switch
             value={isPinned}
             onValueChange={handlePinToggle}
-            trackColor={{ false: colors.icon, true: colors.tint }}
+            trackColor={{ false: colors.switchTrackInactive, true: colors.tint }}
             thumbColor={
               isPinned ? colors.switchThumbActive : colors.switchThumbInactive
             }
           />
         </ThemedView>
 
-        <ThemedView style={styles.menuItem}>
+        <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
           <ThemedText style={styles.menuLabel}>Daily Highlight</ThemedText>
           <Switch
             value={isDailyHighlight}
             onValueChange={handleHighlightToggle}
-            trackColor={{ false: colors.icon, true: colors.highlight }}
+            trackColor={{ false: colors.switchTrackInactive, true: colors.highlight }}
             thumbColor={
               isDailyHighlight
                 ? colors.switchThumbActive
@@ -261,7 +270,7 @@ export default function ModalScreen() {
 
         {item.type === "reminder" && (
           <TouchableOpacity
-            style={styles.menuItem}
+            style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}
             onPress={() => setShowReschedulePicker(true)}
           >
             <ThemedText style={styles.menuLabel}>Reschedule</ThemedText>
@@ -271,7 +280,7 @@ export default function ModalScreen() {
 
         {item.type === "task" && (
           <TouchableOpacity
-            style={styles.menuItem}
+            style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}
             onPress={() => setShowAgentModal(true)}
           >
             <ThemedText style={styles.menuLabel}>Run with Agent</ThemedText>
@@ -282,7 +291,7 @@ export default function ModalScreen() {
           </TouchableOpacity>
         )}
 
-        <TouchableOpacity style={styles.menuItem} onPress={handleDelete}>
+        <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]} onPress={handleDelete}>
           <ThemedText style={styles.menuLabel}>Delete</ThemedText>
           <ThemedText
             style={[styles.deleteButtonText, { color: colors.error }]}
@@ -297,7 +306,11 @@ export default function ModalScreen() {
       <TextInput
         style={[
           styles.bodyInput,
-          { color: colors.text, borderColor: colors.icon },
+          { 
+            color: colors.text, 
+            borderColor: colors.border,
+            backgroundColor: colors.background,
+          },
         ]}
         value={body}
         onChangeText={(text) => {
@@ -305,7 +318,7 @@ export default function ModalScreen() {
           setBody(text);
         }}
         placeholder="Add notes..."
-        placeholderTextColor={colors.icon}
+        placeholderTextColor={colors.tabIconDefault}
         multiline
         textAlignVertical="top"
       />
@@ -370,7 +383,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: 0.5,
-    borderBottomColor: "rgba(0,0,0,0.1)",
     minHeight: 50,
   },
   menuLabel: {
@@ -397,7 +409,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   saveButtonText: {
-    color: "white",
     fontWeight: "600",
   },
   agentButtonContent: {

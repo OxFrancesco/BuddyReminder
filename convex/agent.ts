@@ -272,6 +272,51 @@ export const updateAgentRun = mutation({
 });
 
 /**
+ * Mutation to append a log entry to an agent run
+ */
+export const appendLog = mutation({
+  args: {
+    runId: v.id("agentRuns"),
+    level: v.union(v.literal("info"), v.literal("error"), v.literal("warning")),
+    message: v.string(),
+  },
+  handler: async (ctx, args): Promise<null> => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const run = await ctx.db.get(args.runId);
+    if (!run) {
+      throw new Error("Agent run not found");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user || run.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+
+    const existingLogs = run.logs || [];
+    await ctx.db.patch(args.runId, {
+      logs: [
+        ...existingLogs,
+        {
+          timestamp: Date.now(),
+          level: args.level,
+          message: args.message,
+        },
+      ],
+    });
+
+    return null;
+  },
+});
+
+/**
  * Internal query to get user ID from Clerk ID
  */
 export const internalGetUserByClerkId = internalQuery({
@@ -497,6 +542,22 @@ export const stopDaytonaSandbox = action({
         status: "completed",
         endedAt: Date.now(),
       });
+
+      // Calculate and update cost
+      const run = await ctx.runQuery(internal.agent.internalGetAgentRun, {
+        runId: args.runId,
+      });
+
+      if (run && run.startedAt) {
+        const sandboxCost = calculateSandboxCost(run.startedAt, Date.now());
+        await ctx.runMutation(internal.agent.internalUpdateAgentRunCost, {
+          runId: args.runId,
+          cost: {
+            sandboxRuntime: sandboxCost,
+            total: sandboxCost,
+          },
+        });
+      }
     } catch (error) {
       await ctx.runMutation(internal.agent.internalUpdateAgentRun, {
         runId: args.runId,
@@ -510,3 +571,38 @@ export const stopDaytonaSandbox = action({
     return null;
   },
 });
+
+/**
+ * Internal query to get agent run
+ */
+export const internalGetAgentRun = internalQuery({
+  args: { runId: v.id("agentRuns") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.runId);
+  },
+});
+
+/**
+ * Internal mutation to update agent run cost
+ */
+export const internalUpdateAgentRunCost = internalMutation({
+  args: {
+    runId: v.id("agentRuns"),
+    cost: v.object({
+      sandboxRuntime: v.number(),
+      llmTokens: v.optional(v.number()),
+      total: v.number(),
+    }),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.runId, { cost: args.cost });
+  },
+});
+
+// Helper function for cost calculation
+function calculateSandboxCost(startedAt: number, endedAt: number): number {
+  const DAYTONA_COST_PER_MINUTE = 0.5; // cents per minute
+  const durationMs = endedAt - startedAt;
+  const durationMinutes = Math.ceil(durationMs / 60000);
+  return durationMinutes * DAYTONA_COST_PER_MINUTE;
+}

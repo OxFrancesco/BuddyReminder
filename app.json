@@ -9,7 +9,28 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "infoPlist": {
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "buddyreminder"
+            ]
+          }
+        ],
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": false,
+        "Voltra_AppGroupIdentifier": "group.com.buddyreminder",
+        "Voltra_WidgetIds": [
+          "add_card"
+        ]
+      },
+      "entitlements": {
+        "com.apple.security.application-groups": [
+          "group.com.buddyreminder"
+        ]
+      },
+      "bundleIdentifier": "com.avg-francesco.BuddyReminder"
     },
     "android": {
       "adaptiveIcon": {
@@ -48,7 +69,33 @@
           "sounds": []
         }
       ],
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-build-properties",
+        {
+          "ios": {
+            "deploymentTarget": "17.0"
+          }
+        }
+      ],
+      [
+        "voltra",
+        {
+          "groupIdentifier": "group.com.buddyreminder",
+          "enablePushNotifications": true,
+          "widgets": [
+            {
+              "id": "add_card",
+              "displayName": "Add Card",
+              "description": "Quick add a new reminder card",
+              "supportedFamilies": [
+                "systemSmall"
+              ],
+              "initialStatePath": "./widgets/add-card-initial.tsx"
+            }
+          ]
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,
