@@ -5,21 +5,20 @@ import {
   TouchableOpacity,
   Text,
   Alert,
-  Animated,
+  Animated as RNAnimated,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { Swipeable, GestureDetector, Gesture } from "react-native-gesture-handler";
-import { runOnJS } from "react-native-reanimated";
+import { Swipeable } from "react-native-gesture-handler";
+import * as Haptics from "expo-haptics";
 import { ThemedView } from "./themed-view";
 import { ThemedText } from "./themed-text";
 import { IconSymbol } from "./ui/icon-symbol";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@clerk/clerk-expo";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import RescheduleModal from "./reschedule-modal";
-import QuickCaptureModal from "./quick-capture-modal";
 import AgentModal from "./agent-modal";
 import { Id } from "@/convex/_generated/dataModel";
 import { useLocalItems, useLocalItemMutations } from "@/hooks/use-local-items";
@@ -44,7 +43,6 @@ export default function ItemsList() {
   const colors = Colors[colorScheme ?? "light"];
   const insets = useSafeAreaInsets();
   const [rescheduleItemId, setRescheduleItemId] = useState<string | null>(null);
-  const [showQuickCapture, setShowQuickCapture] = useState(false);
   const [agentItem, setAgentItem] = useState<LocalItem | null>(null);
   const { customizations } = useCardCustomization();
 
@@ -60,12 +58,6 @@ export default function ItemsList() {
   // Get active agent runs count
   const activeAgentRuns = useQuery(api.agent.getActiveAgentRuns);
   const activeAgentCount = activeAgentRuns?.length ?? 0;
-
-  // Pinch gesture to open quick capture
-  const pinchGesture = Gesture.Pinch()
-    .onEnd(() => {
-      runOnJS(setShowQuickCapture)(true);
-    });
 
   const getTypeIcon = (type: string) => {
     return customizations[type as keyof typeof customizations]?.icon || 'doc.text';
@@ -97,64 +89,170 @@ export default function ItemsList() {
     setRescheduleItemId(itemId);
   };
 
-  const renderRightActions = (
-    progress: Animated.AnimatedInterpolation<number>,
-    dragX: Animated.AnimatedInterpolation<number>,
-  ) => {
-    const scale = dragX.interpolate({
-      inputRange: [-100, 0],
-      outputRange: [1, 0],
-      extrapolate: "clamp",
-    });
+  // Haptic feedback on swipe trigger
+  const triggerHapticFeedback = useCallback(() => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, []);
 
-    return (
-      <Animated.View
-        style={[
-          styles.swipeAction,
-          styles.completeAction,
-          { transform: [{ scale }], backgroundColor: colors.success, borderColor: colors.border },
-        ]}
-      >
-        <IconSymbol
-          name="checkmark.circle.fill"
-          size={28}
-          color={colors.white}
-        />
-        <Text style={[styles.swipeActionText, { color: colors.white }]}>
-          Done
-        </Text>
-      </Animated.View>
-    );
-  };
+  // Animated swipe action for Done (right swipe) - slides in from right with rotation
+  const renderRightActions = useCallback(
+    (progress: RNAnimated.AnimatedInterpolation<number>, dragX: RNAnimated.AnimatedInterpolation<number>) => {
+      // Slide in from right
+      const translateX = dragX.interpolate({
+        inputRange: [-120, -80, -40, 0],
+        outputRange: [0, 0, 20, 60],
+        extrapolate: "clamp",
+      });
 
-  const renderLeftActions = (
-    progress: Animated.AnimatedInterpolation<number>,
-    dragX: Animated.AnimatedInterpolation<number>,
-    item: LocalItem,
-  ) => {
-    if (item.type !== "reminder") return null;
+      // Scale up as user swipes
+      const scale = dragX.interpolate({
+        inputRange: [-120, -60, -20, 0],
+        outputRange: [1, 1, 0.6, 0.2],
+        extrapolate: "clamp",
+      });
 
-    const scale = dragX.interpolate({
-      inputRange: [0, 100],
-      outputRange: [0, 1],
-      extrapolate: "clamp",
-    });
+      // Fade in
+      const opacity = dragX.interpolate({
+        inputRange: [-80, -40, 0],
+        outputRange: [1, 0.8, 0],
+        extrapolate: "clamp",
+      });
 
-    return (
-      <Animated.View
-        style={[
-          styles.swipeAction,
-          styles.rescheduleAction,
-          { transform: [{ scale }], backgroundColor: colors.primary, borderColor: colors.border },
-        ]}
-      >
-        <IconSymbol name="calendar" size={28} color={colors.white} />
-        <Text style={[styles.swipeActionText, { color: colors.white }]}>
-          Reschedule
-        </Text>
-      </Animated.View>
-    );
-  };
+      // Rotate checkmark icon
+      const iconRotate = dragX.interpolate({
+        inputRange: [-100, -60, 0],
+        outputRange: ["0deg", "-20deg", "-90deg"],
+        extrapolate: "clamp",
+      });
+
+      // Icon scale bounce when triggered
+      const iconScale = dragX.interpolate({
+        inputRange: [-120, -80, -60, 0],
+        outputRange: [1.3, 1.1, 1, 0.5],
+        extrapolate: "clamp",
+      });
+
+      return (
+        <RNAnimated.View
+          style={[
+            styles.swipeActionContainer,
+            styles.completeActionContainer,
+            {
+              opacity,
+              transform: [{ translateX }],
+            },
+          ]}
+        >
+          <RNAnimated.View
+            style={[
+              styles.swipeAction,
+              styles.completeAction,
+              {
+                backgroundColor: colors.success,
+                borderColor: colors.border,
+                transform: [{ scale }],
+              },
+            ]}
+          >
+            <RNAnimated.View
+              style={{
+                transform: [{ rotate: iconRotate }, { scale: iconScale }],
+              }}
+            >
+              <IconSymbol
+                name="checkmark.circle.fill"
+                size={28}
+                color={colors.white}
+              />
+            </RNAnimated.View>
+            <Text style={[styles.swipeActionText, { color: colors.white }]}>
+              Done
+            </Text>
+          </RNAnimated.View>
+        </RNAnimated.View>
+      );
+    },
+    [colors]
+  );
+
+  // Animated swipe action for Reschedule (left swipe) - slides in from left with bounce
+  const renderLeftActions = useCallback(
+    (progress: RNAnimated.AnimatedInterpolation<number>, dragX: RNAnimated.AnimatedInterpolation<number>, item: LocalItem) => {
+      if (item.type !== "reminder") return null;
+
+      // Slide in from left
+      const translateX = dragX.interpolate({
+        inputRange: [0, 40, 80, 120],
+        outputRange: [-60, -20, 0, 0],
+        extrapolate: "clamp",
+      });
+
+      // Scale up as user swipes
+      const scale = dragX.interpolate({
+        inputRange: [0, 20, 60, 120],
+        outputRange: [0.2, 0.6, 1, 1],
+        extrapolate: "clamp",
+      });
+
+      // Fade in
+      const opacity = dragX.interpolate({
+        inputRange: [0, 40, 80],
+        outputRange: [0, 0.8, 1],
+        extrapolate: "clamp",
+      });
+
+      // Calendar icon pulse/scale
+      const iconScale = dragX.interpolate({
+        inputRange: [0, 60, 80, 120],
+        outputRange: [0.5, 1, 1.1, 1.3],
+        extrapolate: "clamp",
+      });
+
+      // Subtle rotation for calendar
+      const iconRotate = dragX.interpolate({
+        inputRange: [0, 60, 100],
+        outputRange: ["10deg", "0deg", "-5deg"],
+        extrapolate: "clamp",
+      });
+
+      return (
+        <RNAnimated.View
+          style={[
+            styles.swipeActionContainer,
+            styles.rescheduleActionContainer,
+            {
+              opacity,
+              transform: [{ translateX }],
+            },
+          ]}
+        >
+          <RNAnimated.View
+            style={[
+              styles.swipeAction,
+              styles.rescheduleAction,
+              {
+                backgroundColor: colors.primary,
+                borderColor: colors.border,
+                transform: [{ scale }],
+              },
+            ]}
+          >
+            <RNAnimated.View
+              style={{
+                transform: [{ scale: iconScale }, { rotate: iconRotate }],
+              }}
+            >
+              <IconSymbol name="calendar" size={28} color={colors.white} />
+            </RNAnimated.View>
+            <Text style={[styles.swipeActionText, { color: colors.white }]}>
+              Snooze
+            </Text>
+          </RNAnimated.View>
+        </RNAnimated.View>
+      );
+    },
+    [colors]
+  );
 
   const renderItem = ({ item }: { item: LocalItem }) => {
     const urgency = calculateUrgency(item.triggerAt);
@@ -168,12 +266,18 @@ export default function ItemsList() {
         renderLeftActions={(progress, dragX) =>
           renderLeftActions(progress, dragX, item)
         }
+        onSwipeableWillOpen={(direction) => {
+          triggerHapticFeedback();
+        }}
         onSwipeableRightOpen={() => handleComplete(item)}
         onSwipeableLeftOpen={() =>
           item.type === "reminder" && handleReschedule(item.id)
         }
         overshootRight={false}
         overshootLeft={false}
+        friction={2}
+        rightThreshold={60}
+        leftThreshold={60}
       >
         <TouchableOpacity
           style={styles.itemContainer}
@@ -226,7 +330,7 @@ export default function ItemsList() {
                   ]}
                 >
                   <IconSymbol
-                    name={getTypeIcon(item.type)}
+                    name={getTypeIcon(item.type) as any}
                     size={20}
                     color={colors.white}
                   />
@@ -323,42 +427,36 @@ export default function ItemsList() {
   );
 
   return (
-    <GestureDetector gesture={pinchGesture}>
-      <View style={{ flex: 1 }}>
-        <FlatList
-          data={sortedItems}
-          renderItem={renderItem}
-          keyExtractor={(item) => item.id}
-          contentContainerStyle={[
-            styles.listContainer,
-            { paddingTop: insets.top + 16 },
-          ]}
-          showsVerticalScrollIndicator={false}
-          removeClippedSubviews={true}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          ListHeaderComponent={renderHeader}
-          ListFooterComponent={
-            <RescheduleModal
-              itemId={rescheduleItemId}
-              onClose={() => setRescheduleItemId(null)}
-            />
-          }
-        />
-        <QuickCaptureModal
-          visible={showQuickCapture}
-          onClose={() => setShowQuickCapture(false)}
-        />
-        {agentItem && (
-          <AgentModal
-            taskId={agentItem.convexId as Id<"items"> | null}
-            taskTitle={agentItem.title}
-            taskGoal={agentItem.taskSpec?.goal || agentItem.title}
-            onClose={() => setAgentItem(null)}
+    <View style={{ flex: 1 }}>
+      <FlatList
+        data={sortedItems}
+        renderItem={renderItem}
+        keyExtractor={(item) => item.id}
+        contentContainerStyle={[
+          styles.listContainer,
+          { paddingTop: insets.top + 16 },
+        ]}
+        showsVerticalScrollIndicator={false}
+        removeClippedSubviews={true}
+        maxToRenderPerBatch={10}
+        windowSize={10}
+        ListHeaderComponent={renderHeader}
+        ListFooterComponent={
+          <RescheduleModal
+            itemId={rescheduleItemId}
+            onClose={() => setRescheduleItemId(null)}
           />
-        )}
-      </View>
-    </GestureDetector>
+        }
+      />
+      {agentItem && (
+        <AgentModal
+          taskId={agentItem.convexId as Id<"items"> | null}
+          taskTitle={agentItem.title}
+          taskGoal={agentItem.taskSpec?.goal || agentItem.title}
+          onClose={() => setAgentItem(null)}
+        />
+      )}
+    </View>
   );
 }
 
@@ -425,24 +523,37 @@ const styles = StyleSheet.create({
   itemContainer: {
     marginBottom: 12,
   },
+  swipeActionContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    minWidth: 72,
+    paddingHorizontal: 4,
+  },
+  completeActionContainer: {
+    marginLeft: 4,
+  },
+  rescheduleActionContainer: {
+    marginRight: 4,
+  },
   swipeAction: {
     justifyContent: "center",
     alignItems: "center",
-    width: 80,
-    height: "100%",
-    borderRadius: 4,
+    minWidth: 64,
+    paddingHorizontal: 12,
+    paddingVertical: 16,
+    borderRadius: 8,
     borderWidth: 2,
+    shadowOffset: { width: 2, height: 2 },
+    shadowOpacity: 1,
+    shadowRadius: 0,
   },
-  completeAction: {
-    marginLeft: 8,
-  },
-  rescheduleAction: {
-    marginRight: 8,
-  },
+  completeAction: {},
+  rescheduleAction: {},
   swipeActionText: {
-    fontSize: 12,
-    fontWeight: "bold",
+    fontSize: 11,
+    fontWeight: "600",
     marginTop: 4,
+    textAlign: "center",
   },
   neobrutalistCard: {
     borderRadius: 4,

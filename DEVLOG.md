@@ -2,6 +2,13 @@
 
 ## 2026-01-22
 
+### Navigation Refactor
+- Split explore tab into two dedicated tabs: notebook and profile
+- Created notebook tab for future note organization features
+- Created profile tab for user settings and preferences
+- Updated tab bar icons and labels for better clarity
+- Improved separation of concerns in navigation structure
+
 ### iOS Widget Implementation
 - Created iOS home screen widget with urgency-based visual design
 - Implemented widget using expo-widget-kit with proper configuration
@@ -164,3 +171,26 @@
 - Created Makefile with `make dev` command
 - Configured to run both `bunx convex dev` and `npx expo start --ios` in parallel
 - Streamlined development startup process
+
+## January 22, 2026
+
+### Swipeable Tab Navigation
+- Created custom `SwipeableTab` component with gesture-based navigation
+- Implemented smooth horizontal swipe transitions between tabs
+- Added haptic feedback on tab changes
+- Integrated with Expo Router for seamless navigation
+- Applied to all main tabs (Inbox, Notebook, Profile)
+
+### Widget System Enhancements
+- Created `AddCardWidget` component for adding new cards to notebook
+- Implemented card customization modal with title, body, and color picker
+- Added color selection with 8 preset colors
+- Integrated with Convex mutations for card creation
+- Enhanced notebook view with add card functionality
+
+### UI/UX Improvements
+- Added gestures help modal accessible from profile tab
+- Created comprehensive gesture guide with visual examples
+- Improved modal presentations with consistent styling
+- Enhanced artifact viewer with better layout and controls
+- Refined agent modal with improved log viewer integration

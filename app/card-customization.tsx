@@ -1,4 +1,4 @@
-import { StyleSheet, View, TouchableOpacity, ScrollView, TextInput } from 'react-native';
+import { StyleSheet, View, TouchableOpacity, ScrollView } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Stack } from 'expo-router';
 import { ThemedView } from '@/components/themed-view';
@@ -38,7 +38,7 @@ export default function CardCustomizationScreen() {
           onPress={() => setEditingType(isEditing ? null : type)}
         >
           <View style={[styles.preview, { backgroundColor: customization.color }]}>
-            <IconSymbol name={customization.icon} size={24} color={colors.white} />
+            <IconSymbol name={customization.icon as any} size={24} color={colors.white} />
           </View>
           <ThemedText type="defaultSemiBold">{label}</ThemedText>
           <IconSymbol
@@ -63,7 +63,7 @@ export default function CardCustomizationScreen() {
                   onPress={() => updateCustomization(type, { ...customization, icon })}
                 >
                   <IconSymbol
-                    name={icon}
+                    name={icon as any}
                     size={20}
                     color={customization.icon === icon ? colors.white : colors.text}
                   />

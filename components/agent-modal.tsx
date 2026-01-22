@@ -19,30 +19,11 @@ import { Id } from "@/convex/_generated/dataModel";
 import ArtifactViewer from "@/components/artifact-viewer";
 import LogViewer from "@/components/log-viewer";
 
-// Type for agent run
-type AgentRunStatus =
-  | "pending"
-  | "running"
-  | "completed"
-  | "failed"
-  | "cancelled";
-
-interface AgentRunType {
-  _id: Id<"agentRuns">;
-  _creationTime: number;
-  taskId: Id<"items">;
-  userId: Id<"users">;
-  status: AgentRunStatus;
-  summary?: string;
-  logsRef?: string;
-  artifactsRef?: string[];
-  cost?: number;
-  error?: string;
-  startedAt?: number;
-  endedAt?: number;
-  sandboxId?: string;
-  previewUrl?: string;
-  sessionId?: string;
+// Type for agent run cost
+interface AgentRunCost {
+  sandboxRuntime: number;
+  llmTokens?: number;
+  total: number;
 }
 
 interface AgentModalProps {
@@ -75,7 +56,7 @@ export default function AgentModal({
   );
 
   const activeRun = agentRuns?.find(
-    (run: AgentRunType) => run.status === "running" || run.status === "pending",
+    (run) => run.status === "running" || run.status === "pending",
   );
 
   const handleSpawnAgent = async () => {
@@ -303,7 +284,7 @@ export default function AgentModal({
                           Runtime Cost:
                         </ThemedText>
                         <ThemedText style={styles.costValue}>
-                          ${(activeRun.cost.sandboxRuntime / 100).toFixed(2)}
+                          ${activeRun.cost ? ((activeRun.cost as unknown as AgentRunCost).sandboxRuntime / 100).toFixed(2) : '0.00'}
                         </ThemedText>
                       </View>
                       <View style={styles.costRow}>
@@ -315,7 +296,7 @@ export default function AgentModal({
                         <ThemedText
                           style={[styles.costValue, { fontWeight: "700" }]}
                         >
-                          ${(activeRun.cost.total / 100).toFixed(2)}
+                          ${activeRun.cost ? ((activeRun.cost as unknown as AgentRunCost).total / 100).toFixed(2) : '0.00'}
                         </ThemedText>
                       </View>
                     </ThemedView>
@@ -399,11 +380,11 @@ export default function AgentModal({
                   </ThemedText>
                   {agentRuns
                     .filter(
-                      (run: AgentRunType) =>
+                      (run) =>
                         run.status !== "running" && run.status !== "pending",
                     )
                     .slice(0, 5)
-                    .map((run: AgentRunType) => (
+                    .map((run) => (
                       <TouchableOpacity
                         key={run._id}
                         style={[

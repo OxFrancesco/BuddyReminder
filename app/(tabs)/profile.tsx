@@ -16,6 +16,7 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/contexts/theme-context";
 import { useSyncSettings } from "@/contexts/sync-settings-context";
+import { SwipeableTab } from "@/components/swipeable-tab";
 
 export default function TabTwoScreen() {
   const insets = useSafeAreaInsets();
@@ -27,7 +28,8 @@ export default function TabTwoScreen() {
   const colors = Colors[colorScheme ?? "light"];
 
   return (
-    <ThemedView style={[styles.container, { paddingTop: insets.top + 20 }]}>
+    <SwipeableTab>
+      <ThemedView style={[styles.container, { paddingTop: insets.top + 20 }]}>
       <ScrollView showsVerticalScrollIndicator={false} style={styles.scroll}>
         {user?.imageUrl && (
           <Image source={{ uri: user.imageUrl }} style={styles.avatar} />
@@ -196,6 +198,7 @@ export default function TabTwoScreen() {
         </View>
       </ScrollView>
     </ThemedView>
+    </SwipeableTab>
   );
 }
 

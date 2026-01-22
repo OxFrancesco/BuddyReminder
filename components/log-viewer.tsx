@@ -4,7 +4,6 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  RefreshControl,
 } from "react-native";
 import { useEffect, useRef } from "react";
 import { ThemedText } from "@/components/themed-text";

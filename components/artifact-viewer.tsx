@@ -4,11 +4,9 @@ import {
   StyleSheet,
   TouchableOpacity,
   ScrollView,
-  Image,
   ActivityIndicator,
   Share,
 } from "react-native";
-import { useState } from "react";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
@@ -23,6 +21,79 @@ interface ArtifactViewerProps {
   onClose: () => void;
 }
 
+interface ArtifactItemProps {
+  artifact: {
+    _id: Id<"artifacts">;
+    filename: string;
+    fileType: "code" | "image" | "json" | "text" | "other";
+    storageId: Id<"_storage">;
+    size: number;
+  };
+  colors: typeof Colors.light;
+}
+
+function ArtifactItem({ artifact, colors }: ArtifactItemProps) {
+  const url = useQuery(api.artifacts.getArtifactUrl, {
+    storageId: artifact.storageId,
+  });
+
+  const handleShare = async () => {
+    if (!url) return;
+    try {
+      await Share.share({
+        message: `Check out this artifact: ${artifact.filename}`,
+        url,
+      });
+    } catch (error) {
+      console.error("Share failed:", error);
+    }
+  };
+
+  return (
+    <View
+      style={[
+        styles.artifactCard,
+        { backgroundColor: colors.backgroundSecondary },
+      ]}
+    >
+      <View style={styles.artifactHeader}>
+        <IconSymbol
+          name={
+            artifact.fileType === "image"
+              ? "photo"
+              : artifact.fileType === "code"
+              ? "chevron.left.forwardslash.chevron.right"
+              : "doc"
+          }
+          size={20}
+          color={colors.tint}
+        />
+        <ThemedText
+          style={styles.artifactName}
+          numberOfLines={1}
+        >
+          {artifact.filename}
+        </ThemedText>
+      </View>
+
+      <View style={styles.artifactMeta}>
+        <ThemedText style={[styles.metaText, { color: colors.icon }]}>
+          {artifact.fileType} • {(artifact.size / 1024).toFixed(1)} KB
+        </ThemedText>
+        {url && (
+          <TouchableOpacity onPress={handleShare}>
+            <IconSymbol
+              name="square.and.arrow.up"
+              size={18}
+              color={colors.tint}
+            />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+}
+
 export default function ArtifactViewer({ runId, onClose }: ArtifactViewerProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];
@@ -31,57 +102,6 @@ export default function ArtifactViewer({ runId, onClose }: ArtifactViewerProps) 
     api.artifacts.getArtifactsForRun,
     runId ? { runId } : "skip"
   );
-
-  const [selectedArtifact, setSelectedArtifact] = useState<string | null>(null);
-
-  const handleShare = async (url: string, filename: string) => {
-    try {
-      await Share.share({
-        message: `Check out this artifact: ${filename}`,
-        url,
-      });
-    } catch (error) {
-      console.error("Share failed:", error);
-    }
-  };
-
-  const renderArtifactPreview = (artifact: NonNullable<typeof artifacts>[0], url: string | null) => {
-    if (!url) return <ActivityIndicator color={colors.tint} />;
-
-    switch (artifact.fileType) {
-      case "image":
-        return (
-          <Image
-            source={{ uri: url }}
-            style={styles.imagePreview}
-            resizeMode="contain"
-          />
-        );
-      case "code":
-      case "text":
-      case "json":
-        return (
-          <ScrollView style={styles.textPreview}>
-            <ThemedText style={[styles.codeText, { color: colors.text }]}>
-              {/* Would fetch and display content here */}
-              Preview for {artifact.filename}
-            </ThemedText>
-          </ScrollView>
-        );
-      default:
-        return (
-          <ThemedView style={styles.fileInfo}>
-            <IconSymbol name="doc" size={48} color={colors.icon} />
-            <ThemedText style={{ color: colors.text }}>
-              {artifact.filename}
-            </ThemedText>
-            <ThemedText style={{ color: colors.icon, fontSize: 12 }}>
-              {(artifact.size / 1024).toFixed(2)} KB
-            </ThemedText>
-          </ThemedView>
-        );
-    }
-  };
 
   if (!runId) return null;
 
@@ -119,59 +139,13 @@ export default function ArtifactViewer({ runId, onClose }: ArtifactViewerProps) 
             </View>
           ) : (
             <ScrollView style={styles.content}>
-              {artifacts.map((artifact) => {
-                const url = useQuery(api.artifacts.getArtifactUrl, {
-                  storageId: artifact.storageId,
-                });
-
-                return (
-                  <TouchableOpacity
-                    key={artifact._id}
-                    style={[
-                      styles.artifactCard,
-                      { backgroundColor: colors.backgroundSecondary },
-                    ]}
-                    onPress={() => setSelectedArtifact(artifact._id)}
-                  >
-                    <View style={styles.artifactHeader}>
-                      <IconSymbol
-                        name={
-                          artifact.fileType === "image"
-                            ? "photo"
-                            : artifact.fileType === "code"
-                            ? "chevron.left.forwardslash.chevron.right"
-                            : "doc"
-                        }
-                        size={20}
-                        color={colors.tint}
-                      />
-                      <ThemedText
-                        style={styles.artifactName}
-                        numberOfLines={1}
-                      >
-                        {artifact.filename}
-                      </ThemedText>
-                    </View>
-
-                    <View style={styles.artifactMeta}>
-                      <ThemedText style={[styles.metaText, { color: colors.icon }]}>
-                        {artifact.fileType} • {(artifact.size / 1024).toFixed(1)} KB
-                      </ThemedText>
-                      {url && (
-                        <TouchableOpacity
-                          onPress={() => handleShare(url, artifact.filename)}
-                        >
-                          <IconSymbol
-                            name="square.and.arrow.up"
-                            size={18}
-                            color={colors.tint}
-                          />
-                        </TouchableOpacity>
-                      )}
-                    </View>
-                  </TouchableOpacity>
-                );
-              })}
+              {artifacts.map((artifact) => (
+                <ArtifactItem
+                  key={artifact._id}
+                  artifact={artifact}
+                  colors={colors}
+                />
+              ))}
             </ScrollView>
           )}
         </ThemedView>
@@ -241,22 +215,5 @@ const styles = StyleSheet.create({
   },
   metaText: {
     fontSize: 12,
-  },
-  imagePreview: {
-    width: "100%",
-    height: 300,
-    borderRadius: 8,
-  },
-  textPreview: {
-    maxHeight: 400,
-  },
-  codeText: {
-    fontFamily: "monospace",
-    fontSize: 12,
-  },
-  fileInfo: {
-    alignItems: "center",
-    gap: 8,
-    padding: 32,
   },
 });

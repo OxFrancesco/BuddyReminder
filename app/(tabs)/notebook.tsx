@@ -5,7 +5,6 @@ import {
   FlatList,
   Linking,
   ActivityIndicator,
-  SectionList,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { ThemedText } from "@/components/themed-text";
@@ -16,10 +15,10 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useQuery, useAction } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useState } from "react";
-import { router } from "expo-router";
 import { Id } from "@/convex/_generated/dataModel";
 import LogViewer from "@/components/log-viewer";
 import ArtifactViewer from "@/components/artifact-viewer";
+import { SwipeableTab } from "@/components/swipeable-tab";
 
 type AgentRunStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
 
@@ -280,7 +279,8 @@ export default function AgentNotebook() {
   ) || [];
 
   return (
-    <ThemedView style={styles.container}>
+    <SwipeableTab>
+      <ThemedView style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <ThemedText type="title" style={styles.headerTitle}>
           Agent Notebook
@@ -333,6 +333,7 @@ export default function AgentNotebook() {
         />
       )}
     </ThemedView>
+    </SwipeableTab>
   );
 }
 

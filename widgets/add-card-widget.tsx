@@ -8,7 +8,7 @@ export const AddCardWidget = () => {
       end={{ x: 1, y: 1 }}
       style={{ flex: 1 }}
     >
-      <Voltra.VStack style={{ flex: 1, padding: 16, alignment: 'center', justifyContent: 'center' }}>
+      <Voltra.VStack style={{ flex: 1, padding: 16 }}>
         <Voltra.Image
           source={require('@/assets/images/Plius Widget.jpg')}
           style={{ width: 80, height: 80 }}
