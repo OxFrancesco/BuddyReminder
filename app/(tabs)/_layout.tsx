@@ -29,6 +29,15 @@ export default function TabLayout() {
       }}
     >
       <Tabs.Screen
+        name="notebook"
+        options={{
+          title: "Notebook",
+          tabBarIcon: ({ color }) => (
+            <IconSymbol size={32} name="cpu" color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="index"
         options={{
           title: "Inbox",
@@ -38,9 +47,9 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="explore"
+        name="profile"
         options={{
-          title: "Gestures",
+          title: "Profile",
           tabBarIcon: ({ color }) => <ProfileTabIcon color={color} size={32} />,
         }}
       />

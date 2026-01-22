@@ -20,7 +20,12 @@ import ArtifactViewer from "@/components/artifact-viewer";
 import LogViewer from "@/components/log-viewer";
 
 // Type for agent run
-type AgentRunStatus = "pending" | "running" | "completed" | "failed" | "cancelled";
+type AgentRunStatus =
+  | "pending"
+  | "running"
+  | "completed"
+  | "failed"
+  | "cancelled";
 
 interface AgentRunType {
   _id: Id<"agentRuns">;
@@ -66,11 +71,11 @@ export default function AgentModal({
 
   const agentRuns = useQuery(
     api.agent.getAgentRunsForTask,
-    taskId ? { taskId } : "skip"
+    taskId ? { taskId } : "skip",
   );
 
   const activeRun = agentRuns?.find(
-    (run: AgentRunType) => run.status === "running" || run.status === "pending"
+    (run: AgentRunType) => run.status === "running" || run.status === "pending",
   );
 
   const handleSpawnAgent = async () => {
@@ -135,12 +140,21 @@ export default function AgentModal({
               },
             ]}
           >
-            <View style={[styles.header, { borderBottomColor: colors.overlayLight }]}>
+            <View
+              style={[
+                styles.header,
+                { borderBottomColor: colors.overlayLight },
+              ]}
+            >
               <ThemedText style={styles.title}>Agent Runner</ThemedText>
               <TouchableOpacity onPress={onClose} style={styles.closeButton}>
                 <ThemedText style={{ color: colors.tint }}>Done</ThemedText>
               </TouchableOpacity>
             </View>
+
+            <ThemedText style={[styles.headerDescription, { color: colors.icon }]}>
+              We have a smart ass agent that can help you with your tasks!
+            </ThemedText>
 
             <ScrollView style={styles.content}>
               <ThemedView
@@ -166,7 +180,14 @@ export default function AgentModal({
                 <ThemedView
                   style={[styles.errorCard, { backgroundColor: colors.error }]}
                 >
-                  <ThemedText style={[styles.errorText, { color: colors.primaryForeground }]}>{error}</ThemedText>
+                  <ThemedText
+                    style={[
+                      styles.errorText,
+                      { color: colors.primaryForeground },
+                    ]}
+                  >
+                    {error}
+                  </ThemedText>
                 </ThemedView>
               )}
 
@@ -184,8 +205,12 @@ export default function AgentModal({
                         },
                       ]}
                     >
-                      <ThemedText style={[styles.statusText, { color: colors.text }]}>
-                        {activeRun.status === "running" ? "Running" : "Starting..."}
+                      <ThemedText
+                        style={[styles.statusText, { color: colors.text }]}
+                      >
+                        {activeRun.status === "running"
+                          ? "Running"
+                          : "Starting..."}
                       </ThemedText>
                     </View>
                   </View>
@@ -204,7 +229,12 @@ export default function AgentModal({
                           size={20}
                           color={colors.primaryForeground}
                         />
-                        <ThemedText style={[styles.actionButtonText, { color: colors.primaryForeground }]}>
+                        <ThemedText
+                          style={[
+                            styles.actionButtonText,
+                            { color: colors.primaryForeground },
+                          ]}
+                        >
                           Open
                         </ThemedText>
                       </TouchableOpacity>
@@ -217,8 +247,17 @@ export default function AgentModal({
                       ]}
                       onPress={() => setShowLogs(true)}
                     >
-                      <IconSymbol name="text.bubble" size={20} color={colors.tint} />
-                      <ThemedText style={[styles.actionButtonText, { color: colors.tint }]}>
+                      <IconSymbol
+                        name="text.bubble"
+                        size={20}
+                        color={colors.tint}
+                      />
+                      <ThemedText
+                        style={[
+                          styles.actionButtonText,
+                          { color: colors.tint },
+                        ]}
+                      >
                         Logs
                       </ThemedText>
                     </TouchableOpacity>
@@ -231,7 +270,12 @@ export default function AgentModal({
                       onPress={() => setShowArtifacts(true)}
                     >
                       <IconSymbol name="doc" size={20} color={colors.tint} />
-                      <ThemedText style={[styles.actionButtonText, { color: colors.tint }]}>
+                      <ThemedText
+                        style={[
+                          styles.actionButtonText,
+                          { color: colors.tint },
+                        ]}
+                      >
                         Artifacts
                       </ThemedText>
                     </TouchableOpacity>
@@ -253,7 +297,9 @@ export default function AgentModal({
                       ]}
                     >
                       <View style={styles.costRow}>
-                        <ThemedText style={[styles.costLabel, { color: colors.icon }]}>
+                        <ThemedText
+                          style={[styles.costLabel, { color: colors.icon }]}
+                        >
                           Runtime Cost:
                         </ThemedText>
                         <ThemedText style={styles.costValue}>
@@ -261,10 +307,14 @@ export default function AgentModal({
                         </ThemedText>
                       </View>
                       <View style={styles.costRow}>
-                        <ThemedText style={[styles.costLabel, { color: colors.icon }]}>
+                        <ThemedText
+                          style={[styles.costLabel, { color: colors.icon }]}
+                        >
                           Total:
                         </ThemedText>
-                        <ThemedText style={[styles.costValue, { fontWeight: "700" }]}>
+                        <ThemedText
+                          style={[styles.costValue, { fontWeight: "700" }]}
+                        >
                           ${(activeRun.cost.total / 100).toFixed(2)}
                         </ThemedText>
                       </View>
@@ -280,11 +330,23 @@ export default function AgentModal({
                     disabled={isSpawning}
                   >
                     {isSpawning ? (
-                      <ActivityIndicator color={colors.primaryForeground} size="small" />
+                      <ActivityIndicator
+                        color={colors.primaryForeground}
+                        size="small"
+                      />
                     ) : (
                       <>
-                        <IconSymbol name="stop.fill" size={20} color={colors.primaryForeground} />
-                        <ThemedText style={[styles.stopButtonText, { color: colors.primaryForeground }]}>
+                        <IconSymbol
+                          name="stop.fill"
+                          size={20}
+                          color={colors.primaryForeground}
+                        />
+                        <ThemedText
+                          style={[
+                            styles.stopButtonText,
+                            { color: colors.primaryForeground },
+                          ]}
+                        >
                           Stop Agent
                         </ThemedText>
                       </>
@@ -293,13 +355,6 @@ export default function AgentModal({
                 </ThemedView>
               ) : (
                 <ThemedView style={styles.spawnSection}>
-                  <ThemedText
-                    style={[styles.infoText, { color: colors.icon }]}
-                  >
-                    Spawn a Daytona sandbox with OpenCode to work on this task.
-                    The agent will have access to a full development environment.
-                  </ThemedText>
-
                   <TouchableOpacity
                     style={[
                       styles.spawnButton,
@@ -312,11 +367,23 @@ export default function AgentModal({
                     disabled={isSpawning}
                   >
                     {isSpawning ? (
-                      <ActivityIndicator color={colors.primaryForeground} size="small" />
+                      <ActivityIndicator
+                        color={colors.primaryForeground}
+                        size="small"
+                      />
                     ) : (
                       <>
-                        <IconSymbol name="play.fill" size={20} color={colors.primaryForeground} />
-                        <ThemedText style={[styles.spawnButtonText, { color: colors.primaryForeground }]}>
+                        <IconSymbol
+                          name="play.fill"
+                          size={20}
+                          color={colors.primaryForeground}
+                        />
+                        <ThemedText
+                          style={[
+                            styles.spawnButtonText,
+                            { color: colors.primaryForeground },
+                          ]}
+                        >
                           Start Agent
                         </ThemedText>
                       </>
@@ -331,7 +398,10 @@ export default function AgentModal({
                     Previous Runs
                   </ThemedText>
                   {agentRuns
-                    .filter((run: AgentRunType) => run.status !== "running" && run.status !== "pending")
+                    .filter(
+                      (run: AgentRunType) =>
+                        run.status !== "running" && run.status !== "pending",
+                    )
                     .slice(0, 5)
                     .map((run: AgentRunType) => (
                       <TouchableOpacity
@@ -353,12 +423,17 @@ export default function AgentModal({
                                   run.status === "completed"
                                     ? colors.success
                                     : run.status === "failed"
-                                    ? colors.error
-                                    : colors.icon,
+                                      ? colors.error
+                                      : colors.icon,
                               },
                             ]}
                           >
-                            <ThemedText style={[styles.historyStatusText, { color: colors.primaryForeground }]}>
+                            <ThemedText
+                              style={[
+                                styles.historyStatusText,
+                                { color: colors.primaryForeground },
+                              ]}
+                            >
                               {run.status}
                             </ThemedText>
                           </View>
@@ -370,7 +445,10 @@ export default function AgentModal({
                         </View>
                         {run.error && (
                           <ThemedText
-                            style={[styles.historyError, { color: colors.error }]}
+                            style={[
+                              styles.historyError,
+                              { color: colors.error },
+                            ]}
                             numberOfLines={2}
                           >
                             {run.error}
@@ -393,10 +471,7 @@ export default function AgentModal({
       )}
 
       {showLogs && activeRun && (
-        <LogViewer
-          runId={activeRun._id}
-          onClose={() => setShowLogs(false)}
-        />
+        <LogViewer runId={activeRun._id} onClose={() => setShowLogs(false)} />
       )}
     </>
   );
@@ -423,6 +498,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 18,
     fontWeight: "600",
+  },
+  headerDescription: {
+    fontSize: 14,
+    lineHeight: 20,
+    paddingHorizontal: 20,
+    paddingTop: 12,
   },
   closeButton: {
     padding: 8,
@@ -537,11 +618,7 @@ const styles = StyleSheet.create({
   },
   spawnSection: {
     gap: 16,
-  },
-  infoText: {
-    fontSize: 14,
-    lineHeight: 20,
-    textAlign: "center",
+    paddingBottom: 32,
   },
   spawnButton: {
     flexDirection: "row",

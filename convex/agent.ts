@@ -125,6 +125,65 @@ export const getActiveAgentRuns = query({
 });
 
 /**
+ * Query to get a single agent run by ID
+ */
+export const getAgentRunById = query({
+  args: { runId: v.id("agentRuns") },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const run = await ctx.db.get(args.runId);
+    if (!run || run.userId !== user._id) {
+      return null;
+    }
+
+    return run;
+  },
+});
+
+/**
+ * Query to get all agent runs for the current user (for history/notebook view)
+ */
+export const getAllAgentRuns = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const runs = await ctx.db
+      .query("agentRuns")
+      .withIndex("by_user", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .take(50); // Limit to last 50 runs for performance
+
+    return runs;
+  },
+});
+
+/**
  * Public mutation to create an agent run record
  */
 export const createAgentRun = mutation({

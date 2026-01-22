@@ -27,11 +27,11 @@ export default function LogViewer({ runId, onClose }: LogViewerProps) {
   const scrollViewRef = useRef<ScrollView>(null);
 
   const agentRun = useQuery(
-    api.agent.getAgentRunsForTask,
-    runId ? { taskId: runId as any } : "skip"
+    api.agent.getAgentRunById,
+    runId ? { runId } : "skip"
   );
 
-  const logs = agentRun?.[0]?.logs || [];
+  const logs = agentRun?.logs || [];
 
   useEffect(() => {
     // Auto-scroll to bottom when new logs arrive

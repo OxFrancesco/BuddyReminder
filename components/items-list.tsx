@@ -20,6 +20,8 @@ import { useAuth } from "@clerk/clerk-expo";
 import { useState, useMemo } from "react";
 import RescheduleModal from "./reschedule-modal";
 import QuickCaptureModal from "./quick-capture-modal";
+import AgentModal from "./agent-modal";
+import { Id } from "@/convex/_generated/dataModel";
 import { useLocalItems, useLocalItemMutations } from "@/hooks/use-local-items";
 import { LocalItem } from "@/db/types";
 import { cancelItemNotification } from "@/lib/notification-manager";
@@ -43,6 +45,7 @@ export default function ItemsList() {
   const insets = useSafeAreaInsets();
   const [rescheduleItemId, setRescheduleItemId] = useState<string | null>(null);
   const [showQuickCapture, setShowQuickCapture] = useState(false);
+  const [agentItem, setAgentItem] = useState<LocalItem | null>(null);
   const { customizations } = useCardCustomization();
 
   // Refresh urgency calculations every 60 seconds
@@ -196,6 +199,20 @@ export default function ItemsList() {
                 color={urgencyColor}
               />
             )}
+            {/* Agent icon - top right */}
+            <TouchableOpacity
+              style={[
+                styles.agentIconButton,
+                { backgroundColor: colors.backgroundSecondary },
+              ]}
+              onPress={(e) => {
+                e.stopPropagation();
+                setAgentItem(item);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+            >
+              <IconSymbol name="cpu" size={14} color={colors.typeTask} />
+            </TouchableOpacity>
             <View style={styles.itemContent}>
               <View style={styles.itemHeader}>
                 <View
@@ -332,6 +349,14 @@ export default function ItemsList() {
           visible={showQuickCapture}
           onClose={() => setShowQuickCapture(false)}
         />
+        {agentItem && (
+          <AgentModal
+            taskId={agentItem.convexId as Id<"items"> | null}
+            taskTitle={agentItem.title}
+            taskGoal={agentItem.taskSpec?.goal || agentItem.title}
+            onClose={() => setAgentItem(null)}
+          />
+        )}
       </View>
     </GestureDetector>
   );
@@ -428,6 +453,18 @@ const styles = StyleSheet.create({
     elevation: 0,
     marginBottom: 4,
     overflow: 'hidden',
+    position: 'relative',
+  },
+  agentIconButton: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 10,
   },
   itemContent: {
     gap: 12,

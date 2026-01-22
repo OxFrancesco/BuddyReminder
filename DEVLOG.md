@@ -1,5 +1,54 @@
 # Development Log
 
+## 2026-01-22
+
+### iOS Widget Implementation
+- Created iOS home screen widget with urgency-based visual design
+- Implemented widget using expo-widget-kit with proper configuration
+- Added urgency fill effect that shows task priority visually
+- Widget displays item title, body preview, and urgency indicator
+- Integrated with device tilt for interactive urgency visualization
+- Added widget configuration in app.json with proper iOS settings
+
+### Card Customization System
+- Built card customization screen for personalizing item appearance
+- Added background color picker with preset color options
+- Implemented urgency level selector (Low/Medium/High/Critical)
+- Created urgency-based visual effects with animated fills
+- Added device tilt interaction for urgency visualization
+- Integrated customization settings with item schema
+- Navigation from item detail modal to customization screen
+
+### Urgency System
+- Added urgency field to items schema (low/medium/high/critical)
+- Created urgency fill component with animated gradient effects
+- Implemented device tilt hook using expo-sensors for interactive feedback
+- Built fluid shader effects for urgency visualization
+- Color-coded urgency levels (blue/yellow/orange/red)
+- Urgency indicator appears in item cards and detail views
+
+### Enhanced Agent Features
+- Added artifact viewer component for displaying agent execution results
+- Created log viewer for real-time agent execution logs
+- Implemented cost tracking and display for agent executions
+- Added cost utilities for calculating and formatting execution costs
+- Enhanced agent modal with tabs for artifacts and logs
+- Improved agent execution status display with cost information
+- Added artifacts schema and storage in Convex backend
+
+### UI/UX Improvements
+- Added fluid shader effects for visual polish
+- Improved agent modal layout with better information hierarchy
+- Enhanced item cards with urgency indicators
+- Added smooth animations for urgency fill effects
+- Better visual feedback for device tilt interactions
+
+### Technical Infrastructure
+- Added babel.config.js for proper module resolution
+- Configured widget bundle identifier and iOS settings
+- Updated dependencies for widget and sensor support
+- Improved type definitions for customization features
+
 ## 2026-01-19
 
 ### Cloud Sync Toggle

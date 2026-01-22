@@ -53,12 +53,20 @@ export default function AgentScreen() {
         style={[styles.backButton, { backgroundColor: colors.tint }]}
         onPress={() => router.back()}
       >
-        <ThemedText style={[styles.backButtonText, { color: colors.primaryForeground }]}>Go Back</ThemedText>
+        <ThemedText
+          style={[styles.backButtonText, { color: colors.primaryForeground }]}
+        >
+          Go Back
+        </ThemedText>
       </TouchableOpacity>
     </ThemedView>
   );
 
-  const renderItem = ({ item }: { item: NonNullable<typeof activeRuns>[0] }) => (
+  const renderItem = ({
+    item,
+  }: {
+    item: NonNullable<typeof activeRuns>[0];
+  }) => (
     <ThemedView
       style={[styles.card, { backgroundColor: colors.backgroundSecondary }]}
     >
@@ -98,7 +106,14 @@ export default function AgentScreen() {
               size={18}
               color={colors.primaryForeground}
             />
-            <ThemedText style={[styles.actionButtonText, { color: colors.primaryForeground }]}>Open</ThemedText>
+            <ThemedText
+              style={[
+                styles.actionButtonText,
+                { color: colors.primaryForeground },
+              ]}
+            >
+              Open
+            </ThemedText>
           </TouchableOpacity>
         )}
 
@@ -111,8 +126,19 @@ export default function AgentScreen() {
             <ActivityIndicator color={colors.primaryForeground} size="small" />
           ) : (
             <>
-              <IconSymbol name="stop.fill" size={18} color={colors.primaryForeground} />
-              <ThemedText style={[styles.actionButtonText, { color: colors.primaryForeground }]}>Stop</ThemedText>
+              <IconSymbol
+                name="stop.fill"
+                size={18}
+                color={colors.primaryForeground}
+              />
+              <ThemedText
+                style={[
+                  styles.actionButtonText,
+                  { color: colors.primaryForeground },
+                ]}
+              >
+                Stop
+              </ThemedText>
             </>
           )}
         </TouchableOpacity>
@@ -123,8 +149,16 @@ export default function AgentScreen() {
   return (
     <ThemedView style={styles.container}>
       <View style={[styles.header, { borderBottomColor: colors.overlayLight }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backArrow}>
-          <IconSymbol name="chevron.right" size={24} color={colors.text} style={{ transform: [{ rotate: '180deg' }] }} />
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backArrow}
+        >
+          <IconSymbol
+            name="chevron.right"
+            size={24}
+            color={colors.text}
+            style={{ transform: [{ rotate: "180deg" }] }}
+          />
         </TouchableOpacity>
         <ThemedText style={styles.title}>Active Agents</ThemedText>
         <View style={styles.placeholder} />
@@ -202,6 +236,7 @@ const styles = StyleSheet.create({
   },
   listContent: {
     padding: 16,
+    paddingBottom: 40,
     gap: 16,
   },
   card: {
