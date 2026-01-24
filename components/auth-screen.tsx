@@ -17,7 +17,9 @@ WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const { isSignedIn, isLoaded, signOut } = useAuth();
-  const { startOAuthFlow } = useOAuth({ strategy: "oauth_google" });
+  const { startOAuthFlow } = useOAuth({ 
+    strategy: "oauth_google"
+  });
   const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? "light"];

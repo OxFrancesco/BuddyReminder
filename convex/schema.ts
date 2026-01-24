@@ -1,6 +1,15 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+// Alarm configuration validator (reusable)
+const alarmConfigValidator = v.object({
+  enabled: v.boolean(),
+  dismissMethod: v.union(v.literal("nfc"), v.literal("code"), v.literal("either")),
+  registeredNfcTagId: v.optional(v.string()),
+  dismissCode: v.optional(v.string()),
+  soundId: v.optional(v.string()),
+});
+
 export default defineSchema({
   users: defineTable({
     clerkId: v.string(),
@@ -27,6 +36,9 @@ export default defineSchema({
       snoozeCount: v.number(),
     })),
 
+    // Alarm configuration (for reminders with alarm mode)
+    alarmConfig: v.optional(alarmConfigValidator),
+
     // Task fields
     taskSpec: v.optional(v.object({
       goal: v.string(),
@@ -38,6 +50,9 @@ export default defineSchema({
     executionPolicy: v.optional(v.union(v.literal("manual"), v.literal("auto"))),
     agentRunIds: v.optional(v.array(v.string())),
 
+    // Calendar sync
+    googleCalendarEventId: v.optional(v.string()),
+
     updatedAt: v.optional(v.number()),
   })
     .index("by_user", ["userId"])
@@ -45,59 +60,15 @@ export default defineSchema({
     .index("by_user_and_status", ["userId", "status"])
     .index("by_trigger_time", ["triggerAt"]),
 
-  agentRuns: defineTable({
-    taskId: v.id("items"),
+  // NFC tags registered by users for alarm dismissal
+  nfcTags: defineTable({
     userId: v.id("users"),
-    status: v.union(
-      v.literal("pending"),
-      v.literal("running"),
-      v.literal("completed"),
-      v.literal("failed"),
-      v.literal("cancelled")
-    ),
-    summary: v.optional(v.string()),
-    logs: v.optional(v.array(v.object({
-      timestamp: v.number(),
-      level: v.union(v.literal("info"), v.literal("error"), v.literal("warning")),
-      message: v.string(),
-    }))),
-    logsRef: v.optional(v.string()),
-    artifactsRef: v.optional(v.array(v.string())),
-    cost: v.optional(v.object({
-      sandboxRuntime: v.number(), // in cents
-      llmTokens: v.optional(v.number()),
-      total: v.number(), // in cents
-    })),
-    error: v.optional(v.string()),
-    startedAt: v.optional(v.number()),
-    endedAt: v.optional(v.number()),
-    // Daytona sandbox fields
-    sandboxId: v.optional(v.string()),
-    previewUrl: v.optional(v.string()),
-    sessionId: v.optional(v.string()),
+    tagId: v.string(),
+    label: v.string(),
+    createdAt: v.number(),
   })
-    .index("by_task", ["taskId"])
     .index("by_user", ["userId"])
-    .index("by_status", ["status"])
-    .index("by_sandbox", ["sandboxId"]),
-
-  artifacts: defineTable({
-    runId: v.id("agentRuns"),
-    userId: v.id("users"),
-    filename: v.string(),
-    fileType: v.union(
-      v.literal("code"),
-      v.literal("image"),
-      v.literal("json"),
-      v.literal("text"),
-      v.literal("other")
-    ),
-    storageId: v.id("_storage"),
-    size: v.number(),
-    mimeType: v.optional(v.string()),
-  })
-    .index("by_run", ["runId"])
-    .index("by_user", ["userId"]),
+    .index("by_tag_id", ["tagId"]),
 
   attachments: defineTable({
     itemId: v.id("items"),

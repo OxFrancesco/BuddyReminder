@@ -1,5 +1,6 @@
 import * as SQLite from 'expo-sqlite';
 import { LocalItem, SyncStatus } from './types';
+import { migrateDatabase } from './migrations';
 
 const DB_NAME = 'buddyreminder.db';
 
@@ -9,6 +10,7 @@ export async function getDatabase(): Promise<SQLite.SQLiteDatabase> {
   if (db) return db;
   db = await SQLite.openDatabaseAsync(DB_NAME);
   await initializeSchema(db);
+  await migrateDatabase(db);
   return db;
 }
 
@@ -31,6 +33,7 @@ async function initializeSchema(database: SQLite.SQLiteDatabase): Promise<void> 
       taskSpec TEXT,
       executionPolicy TEXT CHECK (executionPolicy IS NULL OR executionPolicy IN ('manual', 'auto')),
       notificationId TEXT,
+      googleCalendarEventId TEXT,
       syncStatus TEXT NOT NULL DEFAULT 'pending' CHECK (syncStatus IN ('pending', 'synced', 'conflict')),
       createdAt INTEGER NOT NULL,
       updatedAt INTEGER NOT NULL,
@@ -63,9 +66,11 @@ export function rowToItem(row: Record<string, unknown>): LocalItem {
     timezone: row.timezone as string | null,
     repeatRule: row.repeatRule as string | null,
     snoozeState: row.snoozeState ? JSON.parse(row.snoozeState as string) : null,
+    alarmConfig: row.alarmConfig ? JSON.parse(row.alarmConfig as string) : null,
     taskSpec: row.taskSpec ? JSON.parse(row.taskSpec as string) : null,
     executionPolicy: row.executionPolicy as LocalItem['executionPolicy'],
     notificationId: row.notificationId as string | null,
+    googleCalendarEventId: row.googleCalendarEventId as string | null,
     syncStatus: row.syncStatus as SyncStatus,
     createdAt: row.createdAt as number,
     updatedAt: row.updatedAt as number,

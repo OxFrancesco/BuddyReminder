@@ -13,12 +13,15 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import AuthProvider from "@/components/auth-provider";
 import { ThemeProvider as CustomThemeProvider } from "@/contexts/theme-context";
 import { SyncSettingsProvider } from "@/contexts/sync-settings-context";
+import { CalendarSyncProvider } from "@/contexts/calendar-sync-context";
 import { DatabaseProvider } from "@/db/provider";
 import { SyncProvider } from "@/components/sync-provider";
 import {
   setupNotificationChannels,
   setupNotificationResponseHandler,
 } from "@/lib/notification-manager";
+import { setupAlarmNotificationHandler } from "@/lib/alarm-service";
+import { initializeNfc } from "@/lib/nfc-service";
 import { useAddCardWidget } from "@/hooks/use-add-card-widget";
 
 export const unstable_settings = {
@@ -34,8 +37,20 @@ function RootLayoutNav() {
     setupNotificationChannels();
 
     // Setup notification tap handler
-    const cleanup = setupNotificationResponseHandler();
-    return cleanup;
+    const notificationCleanup = setupNotificationResponseHandler();
+
+    // Setup alarm notification handler
+    const alarmCleanup = setupAlarmNotificationHandler();
+
+    // Initialize NFC (non-blocking)
+    initializeNfc().catch(() => {
+      // NFC not available - this is fine, we handle it gracefully
+    });
+
+    return () => {
+      notificationCleanup();
+      alarmCleanup();
+    };
   }, []);
 
   return (
@@ -47,11 +62,18 @@ function RootLayoutNav() {
           options={{ presentation: "modal", title: "Item Details" }}
         />
         <Stack.Screen
-          name="agent"
+          name="alarm"
+          options={{
+            presentation: "fullScreenModal",
+            headerShown: false,
+            gestureEnabled: false,
+          }}
+        />
+        <Stack.Screen
+          name="nfc-tags"
           options={{
             presentation: "modal",
-            headerShown: false,
-            title: "Active Agents",
+            title: "NFC Tags",
           }}
         />
       </Stack>
@@ -65,13 +87,15 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <CustomThemeProvider>
         <SyncSettingsProvider>
-          <DatabaseProvider>
-            <AuthProvider>
-              <SyncProvider>
-                <RootLayoutNav />
-              </SyncProvider>
-            </AuthProvider>
-          </DatabaseProvider>
+          <CalendarSyncProvider>
+            <DatabaseProvider>
+              <AuthProvider>
+                <SyncProvider>
+                  <RootLayoutNav />
+                </SyncProvider>
+              </AuthProvider>
+            </DatabaseProvider>
+          </CalendarSyncProvider>
         </SyncSettingsProvider>
       </CustomThemeProvider>
     </GestureHandlerRootView>

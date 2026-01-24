@@ -4,7 +4,7 @@ import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 
-const TAB_ROUTES = ["/", "/notebook", "/profile"];
+const TAB_ROUTES = ["/", "/profile"];
 
 // Normalize pathname to match our route definitions
 function normalizePathname(pathname: string): string {

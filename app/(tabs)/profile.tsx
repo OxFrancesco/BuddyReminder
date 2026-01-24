@@ -4,6 +4,7 @@ import {
   TouchableOpacity,
   ScrollView,
   Switch,
+  Alert,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useUser, useClerk } from "@clerk/clerk-expo";
@@ -16,7 +17,10 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useTheme } from "@/contexts/theme-context";
 import { useSyncSettings } from "@/contexts/sync-settings-context";
+import { useCalendarSync } from "@/contexts/calendar-sync-context";
 import { SwipeableTab } from "@/components/swipeable-tab";
+import { useOAuth } from "@clerk/clerk-expo";
+import { useState } from "react";
 
 export default function TabTwoScreen() {
   const insets = useSafeAreaInsets();
@@ -25,7 +29,33 @@ export default function TabTwoScreen() {
   const colorScheme = useColorScheme();
   const { themeMode, setThemeMode } = useTheme();
   const { syncMode, setSyncMode } = useSyncSettings();
+  const { calendarSyncEnabled, setCalendarSyncEnabled } = useCalendarSync();
+  const { startOAuthFlow } = useOAuth({ 
+    strategy: "oauth_google"
+  });
+  const [isRequestingAccess, setIsRequestingAccess] = useState(false);
   const colors = Colors[colorScheme ?? "light"];
+
+  const handleCalendarToggle = async (value: boolean) => {
+    if (!value) {
+      setCalendarSyncEnabled(false);
+      return;
+    }
+
+    try {
+      setIsRequestingAccess(true);
+      const { createdSessionId, setActive } = await startOAuthFlow();
+      if (createdSessionId && setActive) {
+        await setActive({ session: createdSessionId });
+        setCalendarSyncEnabled(true);
+      }
+    } catch (error) {
+      console.error('Calendar access error:', error);
+      Alert.alert('Calendar Access', 'Failed to grant calendar access. Please try again.');
+    } finally {
+      setIsRequestingAccess(false);
+    }
+  };
 
   return (
     <SwipeableTab>
@@ -164,6 +194,34 @@ export default function TabTwoScreen() {
               }}
               thumbColor={
                 syncMode === "cloud"
+                  ? colors.switchThumbActive
+                  : colors.switchThumbInactive
+              }
+            />
+          </View>
+        </ThemedView>
+
+        <ThemedView
+          style={[
+            styles.settingsSection,
+            {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.icon,
+            },
+          ]}
+        >
+          <View style={styles.syncOption}>
+            <ThemedText type="defaultSemiBold">Google Calendar Sync</ThemedText>
+            <Switch
+              value={calendarSyncEnabled}
+              onValueChange={handleCalendarToggle}
+              disabled={isRequestingAccess}
+              trackColor={{
+                false: colors.switchTrackInactive,
+                true: colors.tint,
+              }}
+              thumbColor={
+                calendarSyncEnabled
                   ? colors.switchThumbActive
                   : colors.switchThumbInactive
               }

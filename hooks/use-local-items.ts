@@ -14,6 +14,7 @@ import {
   setNotificationId as repoSetNotificationId,
 } from '@/db/items-repository';
 import { LocalItem, CreateItemInput, UpdateItemInput, ItemType, ItemStatus } from '@/db/types';
+import { useCalendarSyncForItem } from './use-calendar-sync-effect';
 
 // Hook to get all items for current user
 export function useLocalItems(options?: {
@@ -112,13 +113,16 @@ export function useLocalItem(itemId: string | null): {
 // Hook for item mutations
 export function useLocalItemMutations() {
   const { userId } = useAuth();
+  const syncToCalendar = useCalendarSyncForItem();
 
   const createItem = useCallback(
     async (input: Omit<CreateItemInput, 'clerkUserId'>): Promise<LocalItem> => {
       if (!userId) throw new Error('Not authenticated');
-      return repoCreateItem({ ...input, clerkUserId: userId });
+      const item = await repoCreateItem({ ...input, clerkUserId: userId });
+      await syncToCalendar(item);
+      return item;
     },
-    [userId]
+    [userId, syncToCalendar]
   );
 
   const updateItem = useCallback(
@@ -126,20 +130,25 @@ export function useLocalItemMutations() {
       console.log('[useLocalItemMutations] updateItem called', { itemId, updates });
       const result = await repoUpdateItem(itemId, updates);
       console.log('[useLocalItemMutations] updateItem result', { itemId, result: result ? { body: result.body, isDailyHighlight: result.isDailyHighlight } : null });
+      if (result) await syncToCalendar(result);
       return result;
     },
-    []
+    [syncToCalendar]
   );
 
   const deleteItem = useCallback(async (itemId: string): Promise<void> => {
+    const item = await getItemById(itemId);
+    if (item) await syncToCalendar({ ...item, deletedAt: Date.now() });
     return repoDeleteItem(itemId);
-  }, []);
+  }, [syncToCalendar]);
 
   const updateItemStatus = useCallback(
     async (itemId: string, status: ItemStatus): Promise<LocalItem | null> => {
-      return repoUpdateItemStatus(itemId, status);
+      const result = await repoUpdateItemStatus(itemId, status);
+      if (result) await syncToCalendar(result);
+      return result;
     },
-    []
+    [syncToCalendar]
   );
 
   const toggleItemPin = useCallback(

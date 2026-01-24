@@ -43,9 +43,11 @@ export async function createItem(input: CreateItemInput): Promise<LocalItem> {
     timezone: input.timezone || null,
     repeatRule: input.repeatRule || null,
     snoozeState: null,
+    alarmConfig: input.alarmConfig || null,
     taskSpec: input.taskSpec || null,
     executionPolicy: input.executionPolicy || null,
     notificationId: null,
+    googleCalendarEventId: null,
     syncStatus: 'pending',
     createdAt: now,
     updatedAt: now,
@@ -57,9 +59,9 @@ export async function createItem(input: CreateItemInput): Promise<LocalItem> {
     `INSERT INTO items (
       id, convexId, clerkUserId, type, title, body, status,
       isPinned, isDailyHighlight, triggerAt, timezone, repeatRule,
-      snoozeState, taskSpec, executionPolicy, notificationId,
+      snoozeState, alarmConfig, taskSpec, executionPolicy, notificationId, googleCalendarEventId,
       syncStatus, createdAt, updatedAt, syncedAt, deletedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       item.id,
       item.convexId,
@@ -74,9 +76,11 @@ export async function createItem(input: CreateItemInput): Promise<LocalItem> {
       item.timezone,
       item.repeatRule,
       item.snoozeState ? JSON.stringify(item.snoozeState) : null,
+      item.alarmConfig ? JSON.stringify(item.alarmConfig) : null,
       item.taskSpec ? JSON.stringify(item.taskSpec) : null,
       item.executionPolicy,
       item.notificationId,
+      item.googleCalendarEventId,
       item.syncStatus,
       item.createdAt,
       item.updatedAt,
@@ -190,6 +194,10 @@ export async function updateItem(
   if (updates.snoozeState !== undefined) {
     setClauses.push('snoozeState = ?');
     params.push(updates.snoozeState ? JSON.stringify(updates.snoozeState) : null);
+  }
+  if (updates.alarmConfig !== undefined) {
+    setClauses.push('alarmConfig = ?');
+    params.push(updates.alarmConfig ? JSON.stringify(updates.alarmConfig) : null);
   }
   if (updates.notificationId !== undefined) {
     setClauses.push('notificationId = ?');
@@ -319,6 +327,7 @@ export async function upsertFromRemote(
     timezone?: string;
     repeatRule?: string;
     snoozeState?: LocalItem['snoozeState'];
+    alarmConfig?: LocalItem['alarmConfig'];
     taskSpec?: LocalItem['taskSpec'];
     executionPolicy?: 'manual' | 'auto';
     createdAt: number;
@@ -361,8 +370,8 @@ export async function upsertFromRemote(
       await db.runAsync(
         `UPDATE items SET
           title = ?, body = ?, status = ?, isPinned = ?, isDailyHighlight = ?,
-          triggerAt = ?, timezone = ?, repeatRule = ?, snoozeState = ?, taskSpec = ?,
-          executionPolicy = ?, updatedAt = ?, syncedAt = ?
+          triggerAt = ?, timezone = ?, repeatRule = ?, snoozeState = ?, alarmConfig = ?,
+          taskSpec = ?, executionPolicy = ?, updatedAt = ?, syncedAt = ?
         WHERE convexId = ?`,
         [
           remoteItem.title,
@@ -374,6 +383,7 @@ export async function upsertFromRemote(
           remoteItem.timezone || null,
           remoteItem.repeatRule || null,
           remoteItem.snoozeState ? JSON.stringify(remoteItem.snoozeState) : null,
+          remoteItem.alarmConfig ? JSON.stringify(remoteItem.alarmConfig) : null,
           remoteItem.taskSpec ? JSON.stringify(remoteItem.taskSpec) : null,
           remoteItem.executionPolicy || null,
           remoteUpdatedAt,
@@ -404,9 +414,11 @@ export async function upsertFromRemote(
     timezone: remoteItem.timezone || null,
     repeatRule: remoteItem.repeatRule || null,
     snoozeState: remoteItem.snoozeState || null,
+    alarmConfig: remoteItem.alarmConfig || null,
     taskSpec: remoteItem.taskSpec || null,
     executionPolicy: remoteItem.executionPolicy || null,
     notificationId: null,
+    googleCalendarEventId: null,
     syncStatus: 'synced',
     createdAt: remoteItem.createdAt,
     updatedAt: remoteUpdatedAt,
@@ -418,9 +430,9 @@ export async function upsertFromRemote(
     `INSERT INTO items (
       id, convexId, clerkUserId, type, title, body, status,
       isPinned, isDailyHighlight, triggerAt, timezone, repeatRule,
-      snoozeState, taskSpec, executionPolicy, notificationId,
+      snoozeState, alarmConfig, taskSpec, executionPolicy, notificationId, googleCalendarEventId,
       syncStatus, createdAt, updatedAt, syncedAt, deletedAt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [
       item.id,
       item.convexId,
@@ -435,9 +447,11 @@ export async function upsertFromRemote(
       item.timezone,
       item.repeatRule,
       item.snoozeState ? JSON.stringify(item.snoozeState) : null,
+      item.alarmConfig ? JSON.stringify(item.alarmConfig) : null,
       item.taskSpec ? JSON.stringify(item.taskSpec) : null,
       item.executionPolicy,
       item.notificationId,
+      item.googleCalendarEventId,
       item.syncStatus,
       item.createdAt,
       item.updatedAt,

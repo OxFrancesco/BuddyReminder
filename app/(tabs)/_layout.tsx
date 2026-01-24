@@ -38,15 +38,6 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="notebook"
-        options={{
-          title: "Notebook",
-          tabBarIcon: ({ color }) => (
-            <IconSymbol size={32} name="cpu" color={color} />
-          ),
-        }}
-      />
-      <Tabs.Screen
         name="profile"
         options={{
           title: "Profile",

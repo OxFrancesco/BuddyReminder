@@ -6,6 +6,7 @@ import {
   Text,
   Alert,
   Animated as RNAnimated,
+  Share,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
@@ -19,13 +20,9 @@ import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useAuth } from "@clerk/clerk-expo";
 import { useState, useMemo, useCallback } from "react";
 import RescheduleModal from "./reschedule-modal";
-import AgentModal from "./agent-modal";
-import { Id } from "@/convex/_generated/dataModel";
 import { useLocalItems, useLocalItemMutations } from "@/hooks/use-local-items";
 import { LocalItem } from "@/db/types";
 import { cancelItemNotification } from "@/lib/notification-manager";
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
 import { useCardCustomization } from "@/hooks/use-card-customization";
 import {
   calculateUrgency,
@@ -34,6 +31,7 @@ import {
   useUrgencyRefresh,
 } from "@/hooks/use-urgency";
 import { UrgencyFill } from "./urgency-fill";
+import { formatItemAsMarkdown } from "@/lib/share-utils";
 
 export default function ItemsList() {
   const { isSignedIn, isLoaded } = useAuth();
@@ -43,7 +41,6 @@ export default function ItemsList() {
   const colors = Colors[colorScheme ?? "light"];
   const insets = useSafeAreaInsets();
   const [rescheduleItemId, setRescheduleItemId] = useState<string | null>(null);
-  const [agentItem, setAgentItem] = useState<LocalItem | null>(null);
   const { customizations } = useCardCustomization();
 
   // Refresh urgency calculations every 60 seconds
@@ -54,10 +51,6 @@ export default function ItemsList() {
     return sortByUrgency(items);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [items, urgencyTick]);
-
-  // Get active agent runs count
-  const activeAgentRuns = useQuery(api.agent.getActiveAgentRuns);
-  const activeAgentCount = activeAgentRuns?.length ?? 0;
 
   const getTypeIcon = (type: string) => {
     return customizations[type as keyof typeof customizations]?.icon || 'doc.text';
@@ -87,6 +80,19 @@ export default function ItemsList() {
 
   const handleReschedule = (itemId: string) => {
     setRescheduleItemId(itemId);
+  };
+
+  const handleShare = async (item: LocalItem, event: any) => {
+    event.stopPropagation();
+    try {
+      const markdown = formatItemAsMarkdown(item);
+      await Share.share({
+        message: markdown,
+        title: item.title,
+      });
+    } catch (error) {
+      Alert.alert("Error", "Failed to share item");
+    }
   };
 
   // Haptic feedback on swipe trigger
@@ -303,20 +309,6 @@ export default function ItemsList() {
                 color={urgencyColor}
               />
             )}
-            {/* Agent icon - top right */}
-            <TouchableOpacity
-              style={[
-                styles.agentIconButton,
-                { backgroundColor: colors.backgroundSecondary },
-              ]}
-              onPress={(e) => {
-                e.stopPropagation();
-                setAgentItem(item);
-              }}
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <IconSymbol name="cpu" size={14} color={colors.typeTask} />
-            </TouchableOpacity>
             <View style={styles.itemContent}>
               <View style={styles.itemHeader}>
                 <View
@@ -349,6 +341,17 @@ export default function ItemsList() {
                     </Text>
                   )}
                 </View>
+                <TouchableOpacity
+                  style={[styles.shareButton, { backgroundColor: colors.tint, borderColor: colors.border }]}
+                  onPress={(e) => handleShare(item, e)}
+                  hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                >
+                  <IconSymbol
+                    name="square.and.arrow.up"
+                    size={22}
+                    color={colors.white}
+                  />
+                </TouchableOpacity>
               </View>
               {item.body && (
                 <ThemedText style={styles.body} numberOfLines={2}>
@@ -383,14 +386,14 @@ export default function ItemsList() {
       <ThemedView style={styles.emptyContainer}>
         <IconSymbol
           name="doc.text"
-          size={48}
+          size={64}
           color={colors.icon}
           style={styles.emptyIcon}
         />
-        <ThemedText type="subtitle" style={styles.emptyTitle}>
+        <ThemedText style={[styles.emptyTitle, { color: colors.text }]}>
           No items yet
         </ThemedText>
-        <ThemedText style={styles.emptyText}>
+        <ThemedText style={[styles.emptyText, { color: colors.icon }]}>
           Tap the + button to create your first note, reminder, or task
         </ThemedText>
       </ThemedView>
@@ -402,27 +405,6 @@ export default function ItemsList() {
       <ThemedText type="title" style={styles.headerTitle}>
         Inbox
       </ThemedText>
-      <TouchableOpacity
-        style={[
-          styles.agentButton,
-          {
-            backgroundColor: activeAgentCount > 0 ? colors.typeTask : colors.backgroundSecondary,
-            borderColor: colors.border,
-          },
-        ]}
-        onPress={() => router.push("/agent")}
-      >
-        <IconSymbol
-          name="cpu"
-          size={20}
-          color={activeAgentCount > 0 ? colors.white : colors.icon}
-        />
-        {activeAgentCount > 0 && (
-          <View style={[styles.agentBadge, { backgroundColor: colors.success }]}>
-            <Text style={[styles.agentBadgeText, { color: colors.text }]}>{activeAgentCount}</Text>
-          </View>
-        )}
-      </TouchableOpacity>
     </View>
   );
 
@@ -448,14 +430,6 @@ export default function ItemsList() {
           />
         }
       />
-      {agentItem && (
-        <AgentModal
-          taskId={agentItem.convexId as Id<"items"> | null}
-          taskTitle={agentItem.title}
-          taskGoal={agentItem.taskSpec?.goal || agentItem.title}
-          onClose={() => setAgentItem(null)}
-        />
-      )}
     </View>
   );
 }
@@ -470,18 +444,21 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    padding: 40,
+    padding: 32,
+    gap: 16,
   },
   emptyIcon: {
-    marginBottom: 16,
+    // Spacing handled by gap in container
   },
   emptyTitle: {
-    marginBottom: 8,
+    fontSize: 24,
+    fontWeight: "600",
     textAlign: "center",
   },
   emptyText: {
+    fontSize: 14,
     textAlign: "center",
-    opacity: 0.7,
+    maxWidth: 280,
   },
   listContainer: {
     padding: 16,
@@ -489,35 +466,12 @@ const styles = StyleSheet.create({
   },
   header: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    justifyContent: "flex-start",
     alignItems: "center",
     marginBottom: 16,
   },
   headerTitle: {
     fontSize: 28,
-    fontWeight: "700",
-  },
-  agentButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    borderWidth: 2,
-    justifyContent: "center",
-    alignItems: "center",
-    position: "relative",
-  },
-  agentBadge: {
-    position: "absolute",
-    top: -4,
-    right: -4,
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  agentBadgeText: {
-    fontSize: 11,
     fontWeight: "700",
   },
   itemContainer: {
@@ -566,17 +520,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     position: 'relative',
   },
-  agentIconButton: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    zIndex: 10,
-  },
   itemContent: {
     gap: 12,
   },
@@ -600,6 +543,15 @@ const styles = StyleSheet.create({
     flex: 1,
     gap: 4,
     minWidth: 0,
+  },
+  shareButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 4,
+    borderWidth: 2,
+    justifyContent: "center",
+    alignItems: "center",
+    flexShrink: 0,
   },
   title: {
     fontSize: 16,

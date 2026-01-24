@@ -50,12 +50,12 @@ export default function QuickCaptureModal({
     const lowerText = text.toLowerCase().trim();
 
     // Task detection
-    if (lowerText.startsWith("agent:") || lowerText.startsWith("task:")) {
+    if (lowerText.startsWith("task:")) {
       return {
         type: "task",
-        title: text.replace(/^(agent:|task:)\s*/i, ""),
+        title: text.replace(/^task:\s*/i, ""),
         taskSpec: {
-          goal: text.replace(/^(agent:|task:)\s*/i, ""),
+          goal: text.replace(/^task:\s*/i, ""),
         },
       };
     }
@@ -342,7 +342,7 @@ export default function QuickCaptureModal({
             <ThemedText style={styles.hintText}>
               Try: &ldquo;Remind me tomorrow at 3pm to call mom&rdquo; or
               &ldquo;Meeting next Monday at 2:30pm&rdquo; or
-              &ldquo;Agent: summarize this PDF&rdquo;
+              &ldquo;Task: summarize this PDF&rdquo;
             </ThemedText>
           </View>
         </View>

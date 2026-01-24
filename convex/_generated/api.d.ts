@@ -11,6 +11,7 @@
 import type * as agent from "../agent.js";
 import type * as artifacts from "../artifacts.js";
 import type * as items from "../items.js";
+import type * as nfcTags from "../nfcTags.js";
 import type * as users from "../users.js";
 
 import type {
@@ -23,6 +24,7 @@ declare const fullApi: ApiFromModules<{
   agent: typeof agent;
   artifacts: typeof artifacts;
   items: typeof items;
+  nfcTags: typeof nfcTags;
   users: typeof users;
 }>;
 

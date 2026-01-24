@@ -5,22 +5,26 @@ import {
   Alert,
   Switch,
   View,
+  ScrollView,
 } from "react-native";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useLocalSearchParams, router } from "expo-router";
+import * as chrono from "chrono-node";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import RescheduleModal from "@/components/reschedule-modal";
-import AgentModal from "@/components/agent-modal";
+import AlarmSettings from "@/components/alarm-settings";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useLocalItem, useLocalItemMutations } from "@/hooks/use-local-items";
 import {
   scheduleStickyNotification,
   cancelItemNotification,
+  scheduleReminderNotification,
 } from "@/lib/notification-manager";
-import { Id } from "@/convex/_generated/dataModel";
+import { AlarmConfig } from "@/db/types";
+import { scheduleAlarm, cancelAlarm } from "@/lib/alarm-service";
 
 export default function ModalScreen() {
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
@@ -33,7 +37,6 @@ export default function ModalScreen() {
     deleteItem,
     toggleItemPin,
     toggleItemDailyHighlight,
-    setNotificationId,
   } = useLocalItemMutations();
 
   const [title, setTitle] = useState("");
@@ -41,9 +44,10 @@ export default function ModalScreen() {
   const [isPinned, setIsPinned] = useState(false);
   const [isDailyHighlight, setIsDailyHighlight] = useState(false);
   const [showReschedulePicker, setShowReschedulePicker] = useState(false);
-  const [showAgentModal, setShowAgentModal] = useState(false);
   // Local copy of notificationId to avoid stale references when unpinning
   const [localNotificationId, setLocalNotificationId] = useState<string | null>(null);
+  // Alarm configuration for reminders
+  const [alarmConfig, setAlarmConfig] = useState<AlarmConfig | null>(null);
 
   // Track which item we've initialized for - only sync from db once per item
   const initializedForItemId = useRef<string | null>(null);
@@ -65,6 +69,7 @@ export default function ModalScreen() {
       setIsPinned(item.isPinned || false);
       setIsDailyHighlight(item.isDailyHighlight || false);
       setLocalNotificationId(item.notificationId || null);
+      setAlarmConfig(item.alarmConfig || null);
     }
   }, [item]);
 
@@ -75,8 +80,44 @@ export default function ModalScreen() {
       willSave: item && title !== item.title && title.trim()
     });
     if (item && title !== item.title && title.trim()) {
-      const timeoutId = setTimeout(() => {
+      const timeoutId = setTimeout(async () => {
         console.log('[Modal] Saving title:', title.trim());
+        
+        // Parse for natural language date/time
+        const parsedDates = chrono.parse(title, new Date(), { forwardDate: true });
+        
+        if (parsedDates.length > 0) {
+          const parsed = parsedDates[0];
+          const triggerAt = parsed.start.date().getTime();
+          
+          // Remove date/time text from title
+          let cleanTitle = title.substring(0, parsed.index) + title.substring(parsed.index + parsed.text.length);
+          cleanTitle = cleanTitle.trim();
+          
+          console.log('[Modal] Parsed date from title:', { triggerAt, cleanTitle });
+          
+          // Update local state immediately to prevent reset
+          setTitle(cleanTitle);
+          
+          // Convert to reminder and update with new trigger time
+          await updateItem(item.id, { 
+            title: cleanTitle,
+            triggerAt 
+          });
+          
+          // Schedule notification
+          if (item.notificationId) {
+            await cancelItemNotification(item.id, item.notificationId);
+          }
+          const notificationId = await scheduleReminderNotification(item.id, cleanTitle, triggerAt);
+          if (notificationId) {
+            await updateItem(item.id, { notificationId });
+          }
+          
+          return;
+        }
+        
+        // No date parsed, just update title
         updateItem(item.id, { title: title.trim() });
       }, 500);
       return () => clearTimeout(timeoutId);
@@ -98,6 +139,30 @@ export default function ModalScreen() {
     }
   }, [body, item, updateItem]);
 
+  // Handle alarm configuration changes
+  const handleAlarmConfigChange = useCallback(
+    async (newConfig: AlarmConfig | null) => {
+      if (!item) return;
+
+      console.log('[Modal] handleAlarmConfigChange:', newConfig);
+      setAlarmConfig(newConfig);
+
+      // Update the item's alarm config
+      await updateItem(item.id, { alarmConfig: newConfig });
+
+      // Schedule or cancel alarm based on config
+      if (newConfig?.enabled && item.triggerAt) {
+        // Schedule the alarm
+        const updatedItem = { ...item, alarmConfig: newConfig };
+        await scheduleAlarm(updatedItem);
+      } else if (item.notificationId) {
+        // Cancel any existing alarm
+        await cancelAlarm(item.notificationId);
+      }
+    },
+    [item, updateItem]
+  );
+
   const handlePinToggle = async (value: boolean) => {
     console.log('[Modal] handlePinToggle called with:', value);
     setIsPinned(value);
@@ -117,7 +182,7 @@ export default function ModalScreen() {
         if (notificationId) {
           // Store locally to avoid stale reference when unpinning
           setLocalNotificationId(notificationId);
-          await setNotificationId(item.id, notificationId);
+          await updateItem(item.id, { notificationId });
         }
       } else {
         // Cancel notification when unpinning - use local ID first, fall back to item.notificationId
@@ -207,137 +272,125 @@ export default function ModalScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <TextInput
-        style={[
-          styles.titleInput,
-          {
-            color: colors.text,
-            borderColor: colors.border,
-            backgroundColor: colors.background,
-            shadowColor: colors.shadow,
-          },
-        ]}
-        value={title}
-        onChangeText={setTitle}
-        placeholder="Title"
-        placeholderTextColor={colors.icon}
-        multiline
-      />
-
-      <ThemedView
-        style={[
-          styles.menu,
-          {
-            backgroundColor: colors.backgroundSecondary,
-            borderColor: colors.icon,
-          },
-        ]}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
       >
-        <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
-          <ThemedText style={styles.menuLabel}>Type</ThemedText>
-          <ThemedText
-            style={[styles.typeText, { color: getTypeColor(item.type) }]}
-          >
-            {getTypeIcon(item.type)}
-          </ThemedText>
-        </ThemedView>
+        <TextInput
+          style={[
+            styles.titleInput,
+            {
+              color: colors.text,
+              borderColor: colors.border,
+              backgroundColor: colors.background,
+              shadowColor: colors.shadow,
+            },
+          ]}
+          value={title}
+          onChangeText={setTitle}
+          placeholder="Title"
+          placeholderTextColor={colors.icon}
+          multiline
+        />
 
-        <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
-          <ThemedText style={styles.menuLabel}>Pin to notifications</ThemedText>
-          <Switch
-            value={isPinned}
-            onValueChange={handlePinToggle}
-            trackColor={{ false: colors.switchTrackInactive, true: colors.tint }}
-            thumbColor={
-              isPinned ? colors.switchThumbActive : colors.switchThumbInactive
-            }
-          />
-        </ThemedView>
+        <ThemedView
+          style={[
+            styles.menu,
+            {
+              backgroundColor: colors.backgroundSecondary,
+              borderColor: colors.icon,
+            },
+          ]}
+        >
+          <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
+            <ThemedText style={styles.menuLabel}>Type</ThemedText>
+            <ThemedText
+              style={[styles.typeText, { color: getTypeColor(item.type) }]}
+            >
+              {getTypeIcon(item.type)}
+            </ThemedText>
+          </ThemedView>
 
-        <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
-          <ThemedText style={styles.menuLabel}>Daily Highlight</ThemedText>
-          <Switch
-            value={isDailyHighlight}
-            onValueChange={handleHighlightToggle}
-            trackColor={{ false: colors.switchTrackInactive, true: colors.highlight }}
-            thumbColor={
-              isDailyHighlight
-                ? colors.switchThumbActive
-                : colors.switchThumbInactive
-            }
-          />
-        </ThemedView>
+          <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
+            <ThemedText style={styles.menuLabel}>Pin to notifications</ThemedText>
+            <Switch
+              value={isPinned}
+              onValueChange={handlePinToggle}
+              trackColor={{ false: colors.switchTrackInactive, true: colors.tint }}
+              thumbColor={
+                isPinned ? colors.switchThumbActive : colors.switchThumbInactive
+              }
+            />
+          </ThemedView>
 
-        {item.type === "reminder" && (
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}
-            onPress={() => setShowReschedulePicker(true)}
-          >
-            <ThemedText style={styles.menuLabel}>Reschedule</ThemedText>
-            <IconSymbol name="chevron.right" size={20} color={colors.icon} />
-          </TouchableOpacity>
-        )}
+          <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
+            <ThemedText style={styles.menuLabel}>Daily Highlight</ThemedText>
+            <Switch
+              value={isDailyHighlight}
+              onValueChange={handleHighlightToggle}
+              trackColor={{ false: colors.switchTrackInactive, true: colors.highlight }}
+              thumbColor={
+                isDailyHighlight
+                  ? colors.switchThumbActive
+                  : colors.switchThumbInactive
+              }
+            />
+          </ThemedView>
 
-        {item.type === "task" && (
-          <TouchableOpacity
-            style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}
-            onPress={() => setShowAgentModal(true)}
-          >
-            <ThemedText style={styles.menuLabel}>Run with Agent</ThemedText>
-            <View style={styles.agentButtonContent}>
-              <IconSymbol name="cpu" size={18} color={colors.typeTask} />
+          {item.type === "reminder" && (
+            <TouchableOpacity
+              style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}
+              onPress={() => setShowReschedulePicker(true)}
+            >
+              <ThemedText style={styles.menuLabel}>Reschedule</ThemedText>
               <IconSymbol name="chevron.right" size={20} color={colors.icon} />
-            </View>
+            </TouchableOpacity>
+          )}
+
+          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]} onPress={handleDelete}>
+            <ThemedText style={styles.menuLabel}>Delete</ThemedText>
+            <ThemedText
+              style={[styles.deleteButtonText, { color: colors.error }]}
+            >
+              Delete
+            </ThemedText>
           </TouchableOpacity>
+        </ThemedView>
+
+        {/* Alarm Settings for reminders */}
+        {item.type === "reminder" && (
+          <AlarmSettings
+            alarmConfig={alarmConfig}
+            onChange={handleAlarmConfigChange}
+          />
         )}
 
-        <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]} onPress={handleDelete}>
-          <ThemedText style={styles.menuLabel}>Delete</ThemedText>
-          <ThemedText
-            style={[styles.deleteButtonText, { color: colors.error }]}
-          >
-            Delete
-          </ThemedText>
-        </TouchableOpacity>
-      </ThemedView>
-
-      <ThemedView style={styles.spacer} />
-
-      <TextInput
-        style={[
-          styles.bodyInput,
-          { 
-            color: colors.text, 
-            borderColor: colors.border,
-            backgroundColor: colors.background,
-          },
-        ]}
-        value={body}
-        onChangeText={(text) => {
-          console.log('[Modal] Body onChangeText:', text);
-          setBody(text);
-        }}
-        placeholder="Add notes..."
-        placeholderTextColor={colors.tabIconDefault}
-        multiline
-        textAlignVertical="top"
-      />
-
-      <ThemedView style={styles.footer}></ThemedView>
+        <TextInput
+          style={[
+            styles.bodyInput,
+            {
+              color: colors.text,
+              borderColor: colors.border,
+              backgroundColor: colors.background,
+            },
+          ]}
+          value={body}
+          onChangeText={(text) => {
+            console.log('[Modal] Body onChangeText:', text);
+            setBody(text);
+          }}
+          placeholder="Add notes..."
+          placeholderTextColor={colors.tabIconDefault}
+          multiline
+          textAlignVertical="top"
+        />
+      </ScrollView>
 
       <RescheduleModal
         itemId={showReschedulePicker && item ? item.id : null}
         onClose={() => setShowReschedulePicker(false)}
       />
-
-      {showAgentModal && item && item.convexId && (
-        <AgentModal
-          taskId={item.convexId as Id<"items">}
-          taskTitle={item.title}
-          taskGoal={item.taskSpec?.goal}
-          onClose={() => setShowAgentModal(false)}
-        />
-      )}
     </ThemedView>
   );
 }
@@ -345,6 +398,11 @@ export default function ModalScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
     padding: 20,
   },
   titleInput: {
@@ -364,17 +422,11 @@ const styles = StyleSheet.create({
     height: 120,
     marginBottom: 16,
   },
-  pinLabel: {
-    fontSize: 16,
-  },
   menu: {
     borderWidth: 1,
     borderRadius: 12,
     marginBottom: 16,
     overflow: "hidden",
-  },
-  spacer: {
-    flex: 1,
   },
   menuItem: {
     flexDirection: "row",
@@ -389,31 +441,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "500",
   },
-  footer: {
-    alignItems: "flex-end",
-  },
   typeText: {
     fontSize: 14,
     fontWeight: "500",
     textTransform: "capitalize",
   },
-  deleteButton: {
-    padding: 8,
-  },
   deleteButtonText: {
     fontSize: 14,
-  },
-  saveButton: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    borderRadius: 8,
-  },
-  saveButtonText: {
-    fontWeight: "600",
-  },
-  agentButtonContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
   },
 });

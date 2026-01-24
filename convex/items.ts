@@ -28,6 +28,13 @@ export const getUserItems = query({
         snoozedUntil: v.number(),
         snoozeCount: v.number(),
       })),
+      alarmConfig: v.optional(v.object({
+        enabled: v.boolean(),
+        dismissMethod: v.union(v.literal("nfc"), v.literal("code"), v.literal("either")),
+        registeredNfcTagId: v.optional(v.string()),
+        dismissCode: v.optional(v.string()),
+        soundId: v.optional(v.string()),
+      })),
       taskSpec: v.optional(v.object({
         goal: v.string(),
         inputs: v.optional(v.array(v.string())),
@@ -106,6 +113,13 @@ export const createItem = mutation({
     triggerAt: v.optional(v.number()),
     timezone: v.optional(v.string()),
     repeatRule: v.optional(v.string()),
+    alarmConfig: v.optional(v.object({
+      enabled: v.boolean(),
+      dismissMethod: v.union(v.literal("nfc"), v.literal("code"), v.literal("either")),
+      registeredNfcTagId: v.optional(v.string()),
+      dismissCode: v.optional(v.string()),
+      soundId: v.optional(v.string()),
+    })),
     taskSpec: v.optional(v.object({
       goal: v.string(),
       inputs: v.optional(v.array(v.string())),
@@ -142,9 +156,9 @@ export const createItem = mutation({
       triggerAt: args.triggerAt,
       timezone: args.timezone,
       repeatRule: args.repeatRule,
+      alarmConfig: args.alarmConfig,
       taskSpec: args.taskSpec,
       executionPolicy: args.executionPolicy || "manual",
-      agentRunIds: [],
       updatedAt: now,
     });
   },
@@ -213,6 +227,13 @@ export const updateItemFull = mutation({
       snoozedUntil: v.number(),
       snoozeCount: v.number(),
     })),
+    alarmConfig: v.optional(v.object({
+      enabled: v.boolean(),
+      dismissMethod: v.union(v.literal("nfc"), v.literal("code"), v.literal("either")),
+      registeredNfcTagId: v.optional(v.string()),
+      dismissCode: v.optional(v.string()),
+      soundId: v.optional(v.string()),
+    })),
     taskSpec: v.optional(v.object({
       goal: v.string(),
       inputs: v.optional(v.array(v.string())),
@@ -257,6 +278,7 @@ export const updateItemFull = mutation({
     if (args.timezone !== undefined) updates.timezone = args.timezone;
     if (args.repeatRule !== undefined) updates.repeatRule = args.repeatRule;
     if (args.snoozeState !== undefined) updates.snoozeState = args.snoozeState;
+    if (args.alarmConfig !== undefined) updates.alarmConfig = args.alarmConfig;
     if (args.taskSpec !== undefined) updates.taskSpec = args.taskSpec;
     if (args.executionPolicy !== undefined) updates.executionPolicy = args.executionPolicy;
 
@@ -424,6 +446,59 @@ export const deleteItem = mutation({
     }
 
     await ctx.db.delete(args.itemId);
+    return null;
+  },
+});
+
+/**
+ * Update an item's alarm configuration
+ */
+export const updateItemAlarmConfig = mutation({
+  args: {
+    itemId: v.id("items"),
+    alarmConfig: v.optional(v.object({
+      enabled: v.boolean(),
+      dismissMethod: v.union(v.literal("nfc"), v.literal("code"), v.literal("either")),
+      registeredNfcTagId: v.optional(v.string()),
+      dismissCode: v.optional(v.string()),
+      soundId: v.optional(v.string()),
+    })),
+  },
+  returns: v.null(),
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error("Not authenticated");
+    }
+
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+      .unique();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db.get(args.itemId);
+    if (!item) {
+      throw new Error("Item not found");
+    }
+
+    if (item.userId !== user._id) {
+      throw new Error("Unauthorized");
+    }
+
+    // Only allow alarm config on reminders
+    if (item.type !== "reminder") {
+      throw new Error("Alarm config can only be set on reminders");
+    }
+
+    await ctx.db.patch(args.itemId, {
+      alarmConfig: args.alarmConfig,
+      updatedAt: Date.now(),
+    });
+
     return null;
   },
 });

@@ -17,6 +17,26 @@ export interface TaskSpec {
   workspacePointers?: string[];
 }
 
+export type AlarmDismissMethod = 'nfc' | 'code' | 'either';
+
+export interface AlarmConfig {
+  enabled: boolean;
+  dismissMethod: AlarmDismissMethod;
+  registeredNfcTagId?: string;
+  dismissCode?: string;
+  soundId?: string;
+}
+
+export interface NfcTag {
+  id: string;
+  convexId: string | null;
+  clerkUserId: string;
+  tagId: string;
+  label: string;
+  createdAt: number;
+  syncStatus: SyncStatus;
+}
+
 export interface LocalItem {
   id: string; // Local UUID
   convexId: string | null; // Convex _id after sync
@@ -31,9 +51,11 @@ export interface LocalItem {
   timezone: string | null;
   repeatRule: string | null;
   snoozeState: SnoozeState | null;
+  alarmConfig: AlarmConfig | null;
   taskSpec: TaskSpec | null;
   executionPolicy: 'manual' | 'auto' | null;
   notificationId: string | null;
+  googleCalendarEventId: string | null;
   syncStatus: SyncStatus;
   createdAt: number;
   updatedAt: number;
@@ -51,6 +73,7 @@ export interface CreateItemInput {
   triggerAt?: number;
   timezone?: string;
   repeatRule?: string;
+  alarmConfig?: AlarmConfig;
   taskSpec?: TaskSpec;
   executionPolicy?: 'manual' | 'auto';
 }
@@ -63,6 +86,7 @@ export interface UpdateItemInput {
   isDailyHighlight?: boolean;
   triggerAt?: number;
   snoozeState?: SnoozeState | null;
+  alarmConfig?: AlarmConfig | null;
   notificationId?: string | null;
 }
 

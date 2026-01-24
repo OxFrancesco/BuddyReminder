@@ -23,11 +23,18 @@
         "Voltra_AppGroupIdentifier": "group.com.buddyreminder",
         "Voltra_WidgetIds": [
           "add_card"
+        ],
+        "NFCReaderUsageDescription": "Scan NFC tag to dismiss alarm",
+        "UIBackgroundModes": [
+          "audio"
         ]
       },
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.buddyreminder"
+        ],
+        "com.apple.developer.nfc.readersession.formats": [
+          "TAG"
         ]
       },
       "bundleIdentifier": "com.avg-francesco.BuddyReminder"
@@ -40,7 +47,11 @@
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
       "edgeToEdgeEnabled": true,
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "permissions": [
+        "android.permission.NFC",
+        "android.permission.VIBRATE"
+      ]
     },
     "web": {
       "output": "static",
@@ -76,6 +87,12 @@
           "ios": {
             "deploymentTarget": "17.0"
           }
+        }
+      ],
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "Scan NFC tag to dismiss alarm"
         }
       ],
       [
