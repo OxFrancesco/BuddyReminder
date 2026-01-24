@@ -1,5 +1,85 @@
 # Development Log
 
+## 2026-01-24
+
+### Alarm System Implementation
+- Created comprehensive alarm system with iOS AlarmKit integration
+- Built alarm service with automatic fallback to notifications for older iOS versions
+- Implemented alarm configuration UI with time picker and code entry requirement
+- Added alarm audio management with custom sound support
+- Created alarm settings component with enable/disable toggle
+- Integrated alarm configuration into item modal settings
+- Added alarm dismissal flow with code entry pad verification
+- Alarm system supports iOS 26+ native alarms, falls back gracefully on older devices
+
+### NFC Tag Integration
+- Implemented NFC tag reading and writing service for iOS
+- Created NFC tag registration screen for associating tags with items
+- Built NFC tag management UI with tag list and registration flow
+- Added NFC tag scanning for quick reminder dismissal
+- Integrated NFC tags with alarm system for physical dismissal option
+- Created Convex backend schema and queries for NFC tag storage
+- Added NFC tag association with items in database schema
+
+### Calendar Sync Feature
+- Implemented Google Calendar integration for reminder synchronization
+- Created calendar sync context for managing sync state
+- Built calendar sync service with event creation and updates
+- Added calendar sync toggle in profile settings
+- Implemented automatic sync when reminders are created/updated
+- Added calendar sync effect hook for background synchronization
+- Calendar events include reminder details and trigger times
+
+### Code Entry Pad Component
+- Created secure code entry pad for alarm dismissal
+- Implemented numeric keypad with haptic feedback
+- Added visual feedback for correct/incorrect code entry
+- Built reusable component for any code entry needs
+- Integrated with alarm dismissal flow
+
+### Share Functionality
+- Implemented cross-platform share utility for items
+- Added share button to item detail modal
+- Share includes item title, body, and type information
+- Platform-specific share sheet integration (iOS/Android)
+
+### Database Enhancements
+- Created database migration system for schema updates
+- Added alarmConfig field to items schema
+- Added NFC tag schema with item associations
+- Implemented migration runner for automatic schema updates
+- Added proper type definitions for alarm and NFC data
+
+### Code Quality & Type Safety
+- Fixed TypeScript errors in OAuth configuration (removed unsupported additionalScopes)
+- Fixed updateItem type consistency across codebase
+- Replaced setNotificationId calls with updateItem for consistency
+- Added proper type declarations for optional native modules (AlarmKit)
+- Fixed cancelItemNotification signature to require both itemId and notificationId
+- All TypeScript checks passing with strict mode
+
+### Cleanup & Refactoring
+- Removed deprecated agent modal, artifact viewer, and log viewer components
+- Deleted unused cost utilities and reset scripts
+- Removed notebook tab (consolidated into main inbox)
+- Cleaned up unused agent screen
+- Added .env.example for environment configuration template
+- Updated README with latest project structure
+
+### UI/UX Improvements
+- Enhanced item modal with alarm configuration section
+- Improved profile screen with calendar sync toggle
+- Added NFC tag management screen accessible from profile
+- Better organization of settings and features
+- Consistent notification handling across all features
+
+### Technical Infrastructure
+- Added centralized logger utility for consistent logging
+- Improved error handling in alarm and NFC services
+- Enhanced notification manager with better cancellation logic
+- Better separation of concerns between services
+- Proper cleanup of resources (alarms, notifications, NFC sessions)
+
 ## 2026-01-22
 
 ### Navigation Refactor
