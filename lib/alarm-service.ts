@@ -2,6 +2,7 @@ import { Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { router } from 'expo-router';
 import { LocalItem, AlarmConfig } from '@/db/types';
+import { logger } from '@/lib/logger';
 
 // Type declarations for AlarmKit
 type AlarmKitModule = {
@@ -31,7 +32,7 @@ async function loadAlarmKit(): Promise<boolean> {
       AlarmKit = await import('@raphckrman/react-native-alarm-kit') as AlarmKitModule;
       return true;
     } catch {
-      console.log('[AlarmService] AlarmKit not available');
+      logger.debug('[AlarmService] AlarmKit not available');
       return false;
     }
   }
@@ -87,10 +88,10 @@ async function scheduleAlarmKitAlarm(item: LocalItem): Promise<string | null> {
       // The user will need to open the app to scan NFC or enter code
     });
 
-    console.log('[AlarmService] AlarmKit alarm scheduled:', alarmId);
+    logger.debug('[AlarmService] AlarmKit alarm scheduled:', alarmId);
     return alarmId;
   } catch (error) {
-    console.error('[AlarmService] Failed to schedule AlarmKit alarm:', error);
+    logger.error('[AlarmService] Failed to schedule AlarmKit alarm:', error);
     // Fall back to in-app alarm
     return scheduleInAppAlarm(item);
   }
@@ -109,7 +110,7 @@ async function scheduleInAppAlarm(item: LocalItem): Promise<string | null> {
     // Request notification permissions
     const { status } = await Notifications.requestPermissionsAsync();
     if (status !== 'granted') {
-      console.log('[AlarmService] Notification permission not granted');
+      logger.warn('[AlarmService] Notification permission not granted');
       return null;
     }
 
@@ -136,10 +137,10 @@ async function scheduleInAppAlarm(item: LocalItem): Promise<string | null> {
       },
     });
 
-    console.log('[AlarmService] In-app alarm scheduled:', notificationId);
+    logger.debug('[AlarmService] In-app alarm scheduled:', notificationId);
     return notificationId;
   } catch (error) {
-    console.error('[AlarmService] Failed to schedule in-app alarm:', error);
+    logger.error('[AlarmService] Failed to schedule in-app alarm:', error);
     return null;
   }
 }
@@ -153,19 +154,19 @@ export async function cancelAlarm(alarmId: string): Promise<void> {
   if (useAlarmKit && AlarmKit) {
     try {
       await AlarmKit.cancelAlarm(alarmId);
-      console.log('[AlarmService] AlarmKit alarm cancelled:', alarmId);
+      logger.debug('[AlarmService] AlarmKit alarm cancelled:', alarmId);
       return;
     } catch (error) {
-      console.error('[AlarmService] Failed to cancel AlarmKit alarm:', error);
+      logger.error('[AlarmService] Failed to cancel AlarmKit alarm:', error);
     }
   }
 
   // Cancel notification-based alarm
   try {
     await Notifications.cancelScheduledNotificationAsync(alarmId);
-    console.log('[AlarmService] Notification alarm cancelled:', alarmId);
+    logger.debug('[AlarmService] Notification alarm cancelled:', alarmId);
   } catch (error) {
-    console.error('[AlarmService] Failed to cancel notification alarm:', error);
+    logger.error('[AlarmService] Failed to cancel notification alarm:', error);
   }
 }
 
@@ -177,7 +178,7 @@ export function handleAlarmTrigger(
   itemId: string,
   alarmConfig: AlarmConfig
 ): void {
-  console.log('[AlarmService] Alarm triggered for item:', itemId);
+  logger.debug('[AlarmService] Alarm triggered for item:', itemId);
 
   // Navigate to the full-screen alarm view
   router.push({

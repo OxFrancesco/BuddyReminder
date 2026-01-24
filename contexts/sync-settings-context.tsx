@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '@/lib/logger';
 
 type SyncMode = 'cloud' | 'local';
 
@@ -25,7 +26,7 @@ export function SyncSettingsProvider({ children }: { children: React.ReactNode }
         setSyncModeState(saved as SyncMode);
       }
     } catch (error) {
-      console.log('Error loading sync preference:', error);
+      logger.warn('Error loading sync preference:', error);
     }
   };
 
@@ -34,7 +35,7 @@ export function SyncSettingsProvider({ children }: { children: React.ReactNode }
       await AsyncStorage.setItem('syncMode', mode);
       setSyncModeState(mode);
     } catch (error) {
-      console.log('Error saving sync preference:', error);
+      logger.warn('Error saving sync preference:', error);
     }
   };
 

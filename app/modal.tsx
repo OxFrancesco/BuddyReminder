@@ -15,6 +15,7 @@ import { ThemedView } from "@/components/themed-view";
 import { IconSymbol } from "@/components/ui/icon-symbol";
 import RescheduleModal from "@/components/reschedule-modal";
 import AlarmSettings from "@/components/alarm-settings";
+import { ItemSettingsCard } from "@/components/item-settings-card";
 import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import { useLocalItem, useLocalItemMutations } from "@/hooks/use-local-items";
@@ -25,6 +26,7 @@ import {
 } from "@/lib/notification-manager";
 import { AlarmConfig } from "@/db/types";
 import { scheduleAlarm, cancelAlarm } from "@/lib/alarm-service";
+import { logger } from "@/lib/logger";
 
 export default function ModalScreen() {
   const { itemId } = useLocalSearchParams<{ itemId: string }>();
@@ -32,12 +34,8 @@ export default function ModalScreen() {
   const colors = Colors[colorScheme ?? "light"];
 
   const { item, isLoading } = useLocalItem(itemId ?? null);
-  const {
-    updateItem,
-    deleteItem,
-    toggleItemPin,
-    toggleItemDailyHighlight,
-  } = useLocalItemMutations();
+  const { updateItem, deleteItem, toggleItemPin, toggleItemDailyHighlight } =
+    useLocalItemMutations();
 
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -45,7 +43,9 @@ export default function ModalScreen() {
   const [isDailyHighlight, setIsDailyHighlight] = useState(false);
   const [showReschedulePicker, setShowReschedulePicker] = useState(false);
   // Local copy of notificationId to avoid stale references when unpinning
-  const [localNotificationId, setLocalNotificationId] = useState<string | null>(null);
+  const [localNotificationId, setLocalNotificationId] = useState<string | null>(
+    null,
+  );
   // Alarm configuration for reminders
   const [alarmConfig, setAlarmConfig] = useState<AlarmConfig | null>(null);
 
@@ -53,7 +53,7 @@ export default function ModalScreen() {
   const initializedForItemId = useRef<string | null>(null);
 
   useEffect(() => {
-    console.log('[Modal] Item effect triggered', {
+    logger.debug("[Modal] Item effect triggered", {
       itemId: item?.id,
       initializedFor: initializedForItemId.current,
       itemBody: item?.body,
@@ -62,7 +62,7 @@ export default function ModalScreen() {
     // Only initialize form state once when item first loads
     // This prevents subscription-triggered refetches from resetting user edits
     if (item && initializedForItemId.current !== item.id) {
-      console.log('[Modal] Initializing form state for item:', item.id);
+      logger.debug("[Modal] Initializing form state for item:", item.id);
       initializedForItemId.current = item.id;
       setTitle(item.title);
       setBody(item.body || "");
@@ -74,66 +74,80 @@ export default function ModalScreen() {
   }, [item]);
 
   useEffect(() => {
-    console.log('[Modal] Title effect', {
+    const trimmedTitle = title.trim();
+    logger.debug("[Modal] Title effect", {
       title,
       itemTitle: item?.title,
-      willSave: item && title !== item.title && title.trim()
+      willSave: item && trimmedTitle.length > 0 && trimmedTitle !== item.title,
     });
-    if (item && title !== item.title && title.trim()) {
+    if (item && trimmedTitle.length > 0 && trimmedTitle !== item.title) {
       const timeoutId = setTimeout(async () => {
-        console.log('[Modal] Saving title:', title.trim());
-        
+        logger.debug("[Modal] Saving title:", trimmedTitle);
+
         // Parse for natural language date/time
-        const parsedDates = chrono.parse(title, new Date(), { forwardDate: true });
-        
+        const parsedDates = chrono.parse(trimmedTitle, new Date(), {
+          forwardDate: true,
+        });
+
         if (parsedDates.length > 0) {
           const parsed = parsedDates[0];
           const triggerAt = parsed.start.date().getTime();
-          
+
           // Remove date/time text from title
-          let cleanTitle = title.substring(0, parsed.index) + title.substring(parsed.index + parsed.text.length);
+          let cleanTitle =
+            trimmedTitle.substring(0, parsed.index) +
+            trimmedTitle.substring(parsed.index + parsed.text.length);
           cleanTitle = cleanTitle.trim();
-          
-          console.log('[Modal] Parsed date from title:', { triggerAt, cleanTitle });
-          
+
+          logger.debug("[Modal] Parsed date from title:", {
+            triggerAt,
+            cleanTitle,
+          });
+
           // Update local state immediately to prevent reset
           setTitle(cleanTitle);
-          
+
           // Convert to reminder and update with new trigger time
-          await updateItem(item.id, { 
+          await updateItem(item.id, {
             title: cleanTitle,
-            triggerAt 
+            triggerAt,
           });
-          
+
           // Schedule notification
           if (item.notificationId) {
             await cancelItemNotification(item.id, item.notificationId);
           }
-          const notificationId = await scheduleReminderNotification(item.id, cleanTitle, triggerAt);
+          const notificationId = await scheduleReminderNotification(
+            item.id,
+            cleanTitle,
+            triggerAt,
+          );
           if (notificationId) {
             await updateItem(item.id, { notificationId });
           }
-          
+
           return;
         }
-        
+
         // No date parsed, just update title
-        updateItem(item.id, { title: title.trim() });
+        updateItem(item.id, { title: trimmedTitle });
       }, 500);
       return () => clearTimeout(timeoutId);
     }
   }, [title, item, updateItem]);
 
   useEffect(() => {
-    console.log('[Modal] Body effect', {
+    const normalizedBody = body.trim();
+    const currentBody = item?.body || "";
+    logger.debug("[Modal] Body effect", {
       body,
       itemBody: item?.body,
-      willSave: item && body !== (item.body || "")
+      willSave: item && normalizedBody !== currentBody,
     });
-    if (item && body !== (item.body || "")) {
+    if (item && normalizedBody !== currentBody) {
       const timeoutId = setTimeout(() => {
-        console.log('[Modal] Saving body:', body.trim());
-        updateItem(item.id, { body: body.trim() || undefined });
+        logger.debug("[Modal] Saving body:", normalizedBody);
+        updateItem(item.id, { body: normalizedBody || undefined });
       }, 500);
       return () => clearTimeout(timeoutId);
     }
@@ -144,7 +158,7 @@ export default function ModalScreen() {
     async (newConfig: AlarmConfig | null) => {
       if (!item) return;
 
-      console.log('[Modal] handleAlarmConfigChange:', newConfig);
+      logger.debug("[Modal] handleAlarmConfigChange:", newConfig);
       setAlarmConfig(newConfig);
 
       // Update the item's alarm config
@@ -160,16 +174,23 @@ export default function ModalScreen() {
         await cancelAlarm(item.notificationId);
       }
     },
-    [item, updateItem]
+    [item, updateItem],
   );
 
   const handlePinToggle = async (value: boolean) => {
-    console.log('[Modal] handlePinToggle called with:', value);
+    logger.debug("[Modal] handlePinToggle called with:", value);
     setIsPinned(value);
     if (item) {
-      console.log('[Modal] Calling toggleItemPin for item:', item.id, 'localNotificationId:', localNotificationId, 'item.notificationId:', item.notificationId);
+      logger.debug(
+        "[Modal] Calling toggleItemPin for item:",
+        item.id,
+        "localNotificationId:",
+        localNotificationId,
+        "item.notificationId:",
+        item.notificationId,
+      );
       const result = await toggleItemPin(item.id, value);
-      console.log('[Modal] toggleItemPin result:', result);
+      logger.debug("[Modal] toggleItemPin result:", result);
 
       // Handle notification
       if (value) {
@@ -178,7 +199,7 @@ export default function ModalScreen() {
           item.id,
           item.title,
         );
-        console.log('[Modal] Scheduled notification:', notificationId);
+        logger.debug("[Modal] Scheduled notification:", notificationId);
         if (notificationId) {
           // Store locally to avoid stale reference when unpinning
           setLocalNotificationId(notificationId);
@@ -187,7 +208,12 @@ export default function ModalScreen() {
       } else {
         // Cancel notification when unpinning - use local ID first, fall back to item.notificationId
         const notifId = localNotificationId ?? item.notificationId;
-        console.log('[Modal] Cancelling notification for item:', item.id, 'using notificationId:', notifId);
+        logger.debug(
+          "[Modal] Cancelling notification for item:",
+          item.id,
+          "using notificationId:",
+          notifId,
+        );
         await cancelItemNotification(item.id, notifId);
         setLocalNotificationId(null);
       }
@@ -195,12 +221,15 @@ export default function ModalScreen() {
   };
 
   const handleHighlightToggle = async (value: boolean) => {
-    console.log('[Modal] handleHighlightToggle called with:', value);
+    logger.debug("[Modal] handleHighlightToggle called with:", value);
     setIsDailyHighlight(value);
     if (item) {
-      console.log('[Modal] Calling toggleItemDailyHighlight for item:', item.id);
+      logger.debug(
+        "[Modal] Calling toggleItemDailyHighlight for item:",
+        item.id,
+      );
       const result = await toggleItemDailyHighlight(item.id, value);
-      console.log('[Modal] toggleItemDailyHighlight result:', result);
+      logger.debug("[Modal] toggleItemDailyHighlight result:", result);
     }
   };
 
@@ -226,32 +255,6 @@ export default function ModalScreen() {
         },
       },
     ]);
-  };
-
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case "note":
-        return "Note";
-      case "reminder":
-        return "Reminder";
-      case "task":
-        return "Task";
-      default:
-        return "Note";
-    }
-  };
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case "note":
-        return colors.typeNote;
-      case "reminder":
-        return colors.typeReminder;
-      case "task":
-        return colors.typeTask;
-      default:
-        return colors.text;
-    }
   };
 
   if (isLoading) {
@@ -294,69 +297,15 @@ export default function ModalScreen() {
           multiline
         />
 
-        <ThemedView
-          style={[
-            styles.menu,
-            {
-              backgroundColor: colors.backgroundSecondary,
-              borderColor: colors.icon,
-            },
-          ]}
-        >
-          <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
-            <ThemedText style={styles.menuLabel}>Type</ThemedText>
-            <ThemedText
-              style={[styles.typeText, { color: getTypeColor(item.type) }]}
-            >
-              {getTypeIcon(item.type)}
-            </ThemedText>
-          </ThemedView>
-
-          <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
-            <ThemedText style={styles.menuLabel}>Pin to notifications</ThemedText>
-            <Switch
-              value={isPinned}
-              onValueChange={handlePinToggle}
-              trackColor={{ false: colors.switchTrackInactive, true: colors.tint }}
-              thumbColor={
-                isPinned ? colors.switchThumbActive : colors.switchThumbInactive
-              }
-            />
-          </ThemedView>
-
-          <ThemedView style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}>
-            <ThemedText style={styles.menuLabel}>Daily Highlight</ThemedText>
-            <Switch
-              value={isDailyHighlight}
-              onValueChange={handleHighlightToggle}
-              trackColor={{ false: colors.switchTrackInactive, true: colors.highlight }}
-              thumbColor={
-                isDailyHighlight
-                  ? colors.switchThumbActive
-                  : colors.switchThumbInactive
-              }
-            />
-          </ThemedView>
-
-          {item.type === "reminder" && (
-            <TouchableOpacity
-              style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]}
-              onPress={() => setShowReschedulePicker(true)}
-            >
-              <ThemedText style={styles.menuLabel}>Reschedule</ThemedText>
-              <IconSymbol name="chevron.right" size={20} color={colors.icon} />
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity style={[styles.menuItem, { borderBottomColor: colors.overlayLight }]} onPress={handleDelete}>
-            <ThemedText style={styles.menuLabel}>Delete</ThemedText>
-            <ThemedText
-              style={[styles.deleteButtonText, { color: colors.error }]}
-            >
-              Delete
-            </ThemedText>
-          </TouchableOpacity>
-        </ThemedView>
+        <ItemSettingsCard
+          item={item}
+          isPinned={isPinned}
+          isDailyHighlight={isDailyHighlight}
+          onPinToggle={handlePinToggle}
+          onHighlightToggle={handleHighlightToggle}
+          onReschedule={() => setShowReschedulePicker(true)}
+          onDelete={handleDelete}
+        />
 
         {/* Alarm Settings for reminders */}
         {item.type === "reminder" && (
@@ -376,10 +325,7 @@ export default function ModalScreen() {
             },
           ]}
           value={body}
-          onChangeText={(text) => {
-            console.log('[Modal] Body onChangeText:', text);
-            setBody(text);
-          }}
+          onChangeText={setBody}
           placeholder="Add notes..."
           placeholderTextColor={colors.tabIconDefault}
           multiline
@@ -421,32 +367,5 @@ const styles = StyleSheet.create({
     padding: 12,
     height: 120,
     marginBottom: 16,
-  },
-  menu: {
-    borderWidth: 1,
-    borderRadius: 12,
-    marginBottom: 16,
-    overflow: "hidden",
-  },
-  menuItem: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderBottomWidth: 0.5,
-    minHeight: 50,
-  },
-  menuLabel: {
-    fontSize: 16,
-    fontWeight: "500",
-  },
-  typeText: {
-    fontSize: 14,
-    fontWeight: "500",
-    textTransform: "capitalize",
-  },
-  deleteButtonText: {
-    fontSize: 14,
   },
 });

@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useUser } from '@clerk/clerk-expo';
 import { useMutation } from 'convex/react';
 import { api } from '../convex/_generated/api';
+import { logger } from '@/lib/logger';
 
 export function useUserSync() {
   const { user, isLoaded } = useUser();
@@ -14,7 +15,7 @@ export function useUserSync() {
         email: user.primaryEmailAddress?.emailAddress || '',
         name: user.fullName || undefined,
         imageUrl: user.imageUrl || undefined,
-      }).catch(console.error);
+      }).catch((error) => logger.error('Failed to sync user:', error));
     }
   }, [isLoaded, user, upsertUser]);
 }

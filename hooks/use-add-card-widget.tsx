@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Platform } from 'react-native'
 import Constants from 'expo-constants'
 import { AddCardWidget } from '@/widgets/add-card-widget'
+import { logger } from '@/lib/logger'
 
 export function useAddCardWidget() {
   useEffect(() => {
@@ -16,7 +17,7 @@ export function useAddCardWidget() {
         systemSmall: <AddCardWidget />,
       }, {
         deepLinkUrl: 'buddyreminder://modal',
-      }).catch(console.warn)
+      }).catch((error) => logger.warn('Failed to update add card widget:', error))
     }).catch(() => {
       // Voltra native module not available
     })

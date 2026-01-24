@@ -3,6 +3,7 @@ import { StyleSheet } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
 import Animated from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
+import { logger } from "@/lib/logger";
 
 const TAB_ROUTES = ["/", "/profile"];
 
@@ -53,10 +54,10 @@ export function SwipeableTab({ children, onTwoFingerTap }: SwipeableTabProps) {
     .minPointers(2)
     .maxDuration(500)
     .onBegin(() => {
-      console.log('[GESTURE] Two-finger tap began');
+      logger.debug("[GESTURE] Two-finger tap began");
     })
     .onEnd(() => {
-      console.log('[GESTURE] Two-finger tap ended');
+      logger.debug("[GESTURE] Two-finger tap ended");
       if (onTwoFingerTap) {
         Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
         onTwoFingerTap();

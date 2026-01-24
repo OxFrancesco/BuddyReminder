@@ -1,4 +1,5 @@
 import { Platform } from 'react-native';
+import { logger } from '@/lib/logger';
 
 // NFC Manager types (when package is installed)
 interface NfcTag {
@@ -27,7 +28,7 @@ async function loadNfcManager(): Promise<boolean> {
 
   // Web doesn't support NFC
   if (Platform.OS === 'web') {
-    console.log('[NFC] NFC not supported on web');
+    logger.debug('[NFC] NFC not supported on web');
     return false;
   }
 
@@ -40,10 +41,10 @@ async function loadNfcManager(): Promise<boolean> {
     // Try to start to verify it's actually available
     await NfcManager.start();
     nfcAvailable = true;
-    console.log('[NFC] NFC manager loaded successfully');
+    logger.debug('[NFC] NFC manager loaded successfully');
     return true;
   } catch (error) {
-    console.log('[NFC] NFC manager not available (likely Expo Go or missing native module):', error);
+    logger.warn('[NFC] NFC manager not available (likely Expo Go or missing native module):', error);
     NfcManager = null;
     NfcTech = null;
     nfcAvailable = false;
@@ -98,7 +99,7 @@ export async function initializeNfc(): Promise<boolean> {
 export async function scanTag(): Promise<{ tagId: string } | null> {
   const loaded = await loadNfcManager();
   if (!loaded || !NfcManager || !NfcTech) {
-    console.log('[NFC] Cannot scan - NFC not available');
+    logger.debug('[NFC] Cannot scan - NFC not available');
     return null;
   }
 
@@ -117,7 +118,7 @@ export async function scanTag(): Promise<{ tagId: string } | null> {
 
     return null;
   } catch (error) {
-    console.error('[NFC] Scan failed:', error);
+    logger.error('[NFC] Scan failed:', error);
     return null;
   } finally {
     // Always clean up
@@ -136,11 +137,11 @@ export async function scanTag(): Promise<{ tagId: string } | null> {
  * The caller is responsible for saving the tag to the database
  */
 export async function registerTag(): Promise<{ tagId: string } | null> {
-  console.log('[NFC] Starting tag registration scan...');
+  logger.debug('[NFC] Starting tag registration scan...');
   const result = await scanTag();
 
   if (result) {
-    console.log('[NFC] Tag registered with ID:', result.tagId);
+    logger.debug('[NFC] Tag registered with ID:', result.tagId);
   }
 
   return result;
@@ -150,16 +151,16 @@ export async function registerTag(): Promise<{ tagId: string } | null> {
  * Verify that a scanned tag matches the expected tag ID
  */
 export async function verifyTag(expectedTagId: string): Promise<boolean> {
-  console.log('[NFC] Starting tag verification scan...');
+  logger.debug('[NFC] Starting tag verification scan...');
   const result = await scanTag();
 
   if (!result) {
-    console.log('[NFC] No tag scanned');
+    logger.debug('[NFC] No tag scanned');
     return false;
   }
 
   const matches = result.tagId === expectedTagId;
-  console.log('[NFC] Tag verification:', matches ? 'SUCCESS' : 'FAILED', {
+  logger.debug('[NFC] Tag verification:', matches ? 'SUCCESS' : 'FAILED', {
     expected: expectedTagId,
     scanned: result.tagId,
   });
@@ -193,7 +194,7 @@ export async function openNfcSettings(): Promise<void> {
   try {
     await NfcManager.goToNfcSetting();
   } catch (error) {
-    console.error('[NFC] Failed to open settings:', error);
+    logger.error('[NFC] Failed to open settings:', error);
   }
 }
 

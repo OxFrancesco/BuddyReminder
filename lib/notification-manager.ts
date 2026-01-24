@@ -2,6 +2,7 @@ import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import { setNotificationId, getItemsWithNotifications, getPinnedItems } from '@/db/items-repository';
+import { logger } from '@/lib/logger';
 import { LocalItem } from '@/db/types';
 
 // Configure notification behavior
@@ -96,30 +97,30 @@ export async function cancelItemNotification(
   itemId: string,
   notificationId: string | null
 ): Promise<void> {
-  console.log('[NotificationManager] Cancelling notification for item:', itemId, 'notificationId:', notificationId);
+  logger.debug('[NotificationManager] Cancelling notification for item:', itemId, 'notificationId:', notificationId);
 
   // Try to dismiss by stored notification ID
   if (notificationId) {
     try {
       await Notifications.cancelScheduledNotificationAsync(notificationId);
-      console.log('[NotificationManager] Cancelled scheduled notification:', notificationId);
+      logger.debug('[NotificationManager] Cancelled scheduled notification:', notificationId);
     } catch (error) {
-      console.log('[NotificationManager] Error cancelling scheduled notification:', error);
+      logger.warn('[NotificationManager] Error cancelling scheduled notification:', error);
     }
 
     try {
       await Notifications.dismissNotificationAsync(notificationId);
-      console.log('[NotificationManager] Dismissed notification:', notificationId);
+      logger.debug('[NotificationManager] Dismissed notification:', notificationId);
     } catch (error) {
-      console.log('[NotificationManager] Error dismissing notification:', error);
+      logger.warn('[NotificationManager] Error dismissing notification:', error);
     }
   }
 
   // Also check all presented notifications and dismiss any matching this itemId
   try {
     const presented = await Notifications.getPresentedNotificationsAsync();
-    console.log('[NotificationManager] Presented notifications count:', presented.length);
-    console.log('[NotificationManager] Presented notifications:', JSON.stringify(presented.map(n => ({
+    logger.debug('[NotificationManager] Presented notifications count:', presented.length);
+    logger.debug('[NotificationManager] Presented notifications:', JSON.stringify(presented.map(n => ({
       id: n.request.identifier,
       title: n.request.content.title,
       data: n.request.content.data,
@@ -127,32 +128,32 @@ export async function cancelItemNotification(
 
     for (const notification of presented) {
       const data = notification.request.content.data as { itemId?: string };
-      console.log('[NotificationManager] Checking notification:', notification.request.identifier, 'itemId in data:', data.itemId, 'target itemId:', itemId);
+      logger.debug('[NotificationManager] Checking notification:', notification.request.identifier, 'itemId in data:', data.itemId, 'target itemId:', itemId);
       if (data.itemId === itemId) {
-        console.log('[NotificationManager] Found matching notification, dismissing:', notification.request.identifier);
+        logger.debug('[NotificationManager] Found matching notification, dismissing:', notification.request.identifier);
         await Notifications.dismissNotificationAsync(notification.request.identifier);
-        console.log('[NotificationManager] Dismissed presented notification:', notification.request.identifier);
+        logger.debug('[NotificationManager] Dismissed presented notification:', notification.request.identifier);
       }
     }
   } catch (error) {
-    console.log('[NotificationManager] Error dismissing presented notifications:', error);
+    logger.warn('[NotificationManager] Error dismissing presented notifications:', error);
   }
 
   await setNotificationId(itemId, null);
-  console.log('[NotificationManager] Cleared notification ID in database');
+  logger.debug('[NotificationManager] Cleared notification ID in database');
 }
 
 // Dismiss all presented notifications (for debugging)
 export async function dismissAllPresentedNotifications(): Promise<void> {
   try {
     const presented = await Notifications.getPresentedNotificationsAsync();
-    console.log('[NotificationManager] Dismissing all', presented.length, 'presented notifications');
+    logger.debug('[NotificationManager] Dismissing all', presented.length, 'presented notifications');
     for (const notification of presented) {
       await Notifications.dismissNotificationAsync(notification.request.identifier);
     }
-    console.log('[NotificationManager] All notifications dismissed');
+    logger.debug('[NotificationManager] All notifications dismissed');
   } catch (error) {
-    console.log('[NotificationManager] Error dismissing all notifications:', error);
+    logger.warn('[NotificationManager] Error dismissing all notifications:', error);
   }
 }
 

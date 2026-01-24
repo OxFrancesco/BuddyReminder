@@ -57,67 +57,53 @@ export default function AlarmSettings({
     checkNfc();
   }, []);
 
-  // Update parent when config changes
-  const updateConfig = useCallback(() => {
-    if (!isEnabled) {
-      onChange(null);
-      return;
-    }
-
-    // Validate configuration
-    if (dismissMethod === 'nfc' && !selectedTagId) {
-      // Need to select a tag
-      return;
-    }
-
-    if (dismissMethod === 'code' && dismissCode.length < 4) {
-      // Need a valid code
-      return;
-    }
-
-    if (dismissMethod === 'either' && !selectedTagId && dismissCode.length < 4) {
-      // Need at least one valid option
-      return;
-    }
-
-    onChange({
-      enabled: true,
-      dismissMethod,
-      registeredNfcTagId: selectedTagId,
-      dismissCode: dismissCode.length >= 4 ? dismissCode : undefined,
-      soundId: alarmConfig?.soundId,
-    });
-  }, [isEnabled, dismissMethod, selectedTagId, dismissCode, alarmConfig?.soundId, onChange]);
-
-  // Trigger update when relevant values change
-  useEffect(() => {
-    updateConfig();
-  }, [isEnabled, dismissMethod, selectedTagId, dismissCode]);
+  // Build config from current state
+  const buildConfig = useCallback(
+    (
+      enabled: boolean,
+      method: AlarmDismissMethod,
+      tagId: string | undefined,
+      code: string
+    ): AlarmConfig | null => {
+      if (!enabled) {
+        return null;
+      }
+      return {
+        enabled: true,
+        dismissMethod: method,
+        registeredNfcTagId: tagId,
+        dismissCode: code.length >= 4 ? code : undefined,
+        soundId: alarmConfig?.soundId,
+      };
+    },
+    [alarmConfig?.soundId]
+  );
 
   // Handle toggle
   const handleToggle = (value: boolean) => {
     setIsEnabled(value);
-    if (!value) {
-      onChange(null);
-    }
+    onChange(buildConfig(value, dismissMethod, selectedTagId, dismissCode));
   };
 
   // Handle dismiss method change
   const handleDismissMethodChange = (method: AlarmDismissMethod) => {
-    setDismissMethod(method);
+    let finalMethod = method;
     if (method === 'nfc' && !nfcAvailable) {
       Alert.alert(
         'NFC Not Available',
         'NFC is not supported on this device. Please choose a different dismiss method.'
       );
-      setDismissMethod('code');
+      finalMethod = 'code';
     }
+    setDismissMethod(finalMethod);
+    onChange(buildConfig(isEnabled, finalMethod, selectedTagId, dismissCode));
   };
 
   // Handle tag selection
   const handleTagSelect = (tagId: string) => {
     setSelectedTagId(tagId);
     setShowTagPicker(false);
+    onChange(buildConfig(isEnabled, dismissMethod, tagId, dismissCode));
   };
 
   // Handle new tag registration
@@ -125,6 +111,13 @@ export default function AlarmSettings({
     setSelectedTagId(tagId);
     setShowTagRegistration(false);
     setShowTagPicker(false);
+    onChange(buildConfig(isEnabled, dismissMethod, tagId, dismissCode));
+  };
+
+  // Handle dismiss code change
+  const handleDismissCodeChange = (code: string) => {
+    setDismissCode(code);
+    onChange(buildConfig(isEnabled, dismissMethod, selectedTagId, code));
   };
 
   // Get selected tag label
@@ -287,7 +280,7 @@ export default function AlarmSettings({
               { color: colors.text, borderColor: colors.border },
             ]}
             value={dismissCode}
-            onChangeText={setDismissCode}
+            onChangeText={handleDismissCodeChange}
             placeholder="4+ digits"
             placeholderTextColor={colors.icon}
             keyboardType="number-pad"

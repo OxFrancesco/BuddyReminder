@@ -15,6 +15,7 @@ import {
 import { UrgencyLevel } from "@/hooks/use-urgency";
 import { useDeviceTilt, useStaticTilt } from "@/hooks/use-device-tilt";
 import { fluidShaderSource, fluidShaderSimpleSource, hexToRgb } from "./fluid-shader";
+import { logger } from "@/lib/logger";
 
 interface UrgencyFillProps {
   percentage: number; // 0-100, inverted (0 = full, 100 = empty)
@@ -29,19 +30,19 @@ let simpleShader: ReturnType<typeof Skia.RuntimeEffect.Make> | null = null;
 try {
   fluidShader = Skia.RuntimeEffect.Make(fluidShaderSource);
   if (!fluidShader) {
-    console.warn("Failed to compile fluid shader");
+    logger.warn("Failed to compile fluid shader");
   }
 } catch (e) {
-  console.warn("Error compiling fluid shader:", e);
+  logger.warn("Error compiling fluid shader:", e);
 }
 
 try {
   simpleShader = Skia.RuntimeEffect.Make(fluidShaderSimpleSource);
   if (!simpleShader) {
-    console.warn("Failed to compile simple shader");
+    logger.warn("Failed to compile simple shader");
   }
 } catch (e) {
-  console.warn("Error compiling simple shader:", e);
+  logger.warn("Error compiling simple shader:", e);
 }
 
 export function UrgencyFill({ percentage, level, color }: UrgencyFillProps) {

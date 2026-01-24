@@ -1,4 +1,5 @@
 import { useAuth } from '@clerk/clerk-expo';
+import { logger } from '@/lib/logger';
 
 export interface CalendarEvent {
   summary: string;
@@ -31,7 +32,7 @@ export async function syncToGoogleCalendar(
     const data = await response.json();
     return data.id;
   } catch (error) {
-    console.error('Calendar sync error:', error);
+    logger.error('Calendar sync error:', error);
     return null;
   }
 }
@@ -59,7 +60,7 @@ export async function updateGoogleCalendarEvent(
 
     return response.ok;
   } catch (error) {
-    console.error('Calendar update error:', error);
+    logger.error('Calendar update error:', error);
     return false;
   }
 }
@@ -84,7 +85,7 @@ export async function deleteGoogleCalendarEvent(
 
     return response.ok;
   } catch (error) {
-    console.error('Calendar delete error:', error);
+    logger.error('Calendar delete error:', error);
     return false;
   }
 }

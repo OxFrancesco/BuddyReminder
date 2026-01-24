@@ -1,64 +1,56 @@
-import { useAuth } from '@clerk/clerk-expo';
+import { useAction } from 'convex/react';
+import { api } from '@/convex/_generated/api';
+import { Id } from '@/convex/_generated/dataModel';
 import { useCalendarSync } from '@/contexts/calendar-sync-context';
 import { LocalItem } from '@/db/types';
-import {
-  syncToGoogleCalendar,
-  updateGoogleCalendarEvent,
-  deleteGoogleCalendarEvent,
-  CalendarEvent,
-} from '@/lib/calendar-sync';
-import { getDatabase } from '@/db/database';
-
-export async function syncItemToCalendar(
-  item: LocalItem,
-  getToken: () => Promise<string | null>,
-  calendarSyncEnabled: boolean
-): Promise<void> {
-  if (!calendarSyncEnabled || !item.triggerAt) return;
-
-  const event: CalendarEvent = {
-    summary: item.title,
-    description: item.body || undefined,
-    start: {
-      dateTime: new Date(item.triggerAt).toISOString(),
-      timeZone: item.timezone || 'UTC',
-    },
-    end: {
-      dateTime: new Date(item.triggerAt + 3600000).toISOString(), // +1 hour
-      timeZone: item.timezone || 'UTC',
-    },
-  };
-
-  const db = await getDatabase();
-
-  if (item.googleCalendarEventId) {
-    // Update or delete existing event
-    if (item.status === 'done' || item.deletedAt) {
-      await deleteGoogleCalendarEvent(getToken, item.googleCalendarEventId);
-      await db.runAsync(
-        'UPDATE items SET googleCalendarEventId = NULL WHERE id = ?',
-        [item.id]
-      );
-    } else {
-      await updateGoogleCalendarEvent(getToken, item.googleCalendarEventId, event);
-    }
-  } else if (item.status === 'open' && !item.deletedAt) {
-    // Create new event
-    const eventId = await syncToGoogleCalendar(getToken, event);
-    if (eventId) {
-      await db.runAsync(
-        'UPDATE items SET googleCalendarEventId = ? WHERE id = ?',
-        [eventId, item.id]
-      );
-    }
-  }
-}
+import { logger } from '@/lib/logger';
 
 export function useCalendarSyncForItem() {
-  const { getToken } = useAuth();
+  const syncAction = useAction(api.calendar.syncItemToCalendar);
+  const deleteAction = useAction(api.calendar.deleteItemFromCalendar);
   const { calendarSyncEnabled } = useCalendarSync();
 
-  return async (item: LocalItem) => {
-    await syncItemToCalendar(item, getToken, calendarSyncEnabled);
+  const syncItem = async (item: LocalItem) => {
+    if (!calendarSyncEnabled) return;
+    if (!item.convexId) {
+      logger.debug('Skipping calendar sync: item not synced to Convex yet');
+      return;
+    }
+    if (!item.triggerAt) {
+      logger.debug('Skipping calendar sync: item has no trigger time');
+      return;
+    }
+
+    try {
+      const result = await syncAction({
+        itemId: item.convexId as Id<'items'>,
+      });
+
+      if (!result.success) {
+        logger.warn('Calendar sync failed for item:', item.id);
+      }
+    } catch (error) {
+      logger.error('Calendar sync error:', error);
+    }
   };
+
+  const deleteItem = async (item: LocalItem) => {
+    if (!calendarSyncEnabled) return;
+    if (!item.convexId) return;
+    if (!item.googleCalendarEventId) return;
+
+    try {
+      const result = await deleteAction({
+        itemId: item.convexId as Id<'items'>,
+      });
+
+      if (!result.success) {
+        logger.warn('Calendar delete failed for item:', item.id);
+      }
+    } catch (error) {
+      logger.error('Calendar delete error:', error);
+    }
+  };
+
+  return { syncItem, deleteItem };
 }

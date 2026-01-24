@@ -12,13 +12,14 @@ import { Colors } from "@/constants/theme";
 import { useColorScheme } from "@/hooks/use-color-scheme";
 import * as WebBrowser from "expo-web-browser";
 import { useState } from "react";
+import { logger } from "@/lib/logger";
 
 WebBrowser.maybeCompleteAuthSession();
 
 export default function AuthScreen() {
   const { isSignedIn, isLoaded, signOut } = useAuth();
-  const { startOAuthFlow } = useOAuth({ 
-    strategy: "oauth_google"
+  const { startOAuthFlow } = useOAuth({
+    strategy: "oauth_google",
   });
   const [loading, setLoading] = useState(false);
   const colorScheme = useColorScheme();
@@ -32,7 +33,7 @@ export default function AuthScreen() {
         await setActive({ session: createdSessionId });
       }
     } catch (err) {
-      console.error("OAuth error", err);
+      logger.error("OAuth error", err);
     } finally {
       setLoading(false);
     }

@@ -1,4 +1,5 @@
 import * as SQLite from 'expo-sqlite';
+import { logger } from '@/lib/logger';
 
 export async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> {
   try {
@@ -11,7 +12,7 @@ export async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
       await db.execAsync(`
         ALTER TABLE items ADD COLUMN googleCalendarEventId TEXT;
       `);
-      console.log('Migration: Added googleCalendarEventId column');
+      logger.info('Migration: Added googleCalendarEventId column');
     }
 
     // Migration 2: Add alarmConfig column for alarm mode on reminders
@@ -23,7 +24,7 @@ export async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
       await db.execAsync(`
         ALTER TABLE items ADD COLUMN alarmConfig TEXT;
       `);
-      console.log('Migration: Added alarmConfig column');
+      logger.info('Migration: Added alarmConfig column');
     }
 
     // Migration 3: Create nfcTags table for registered NFC tags
@@ -41,8 +42,8 @@ export async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
       CREATE INDEX IF NOT EXISTS idx_nfcTags_clerkUserId ON nfcTags(clerkUserId);
       CREATE INDEX IF NOT EXISTS idx_nfcTags_tagId ON nfcTags(tagId);
     `);
-    console.log('Migration: Ensured nfcTags table exists');
+    logger.info('Migration: Ensured nfcTags table exists');
   } catch (error) {
-    console.error('Migration error:', error);
+    logger.error('Migration error:', error);
   }
 }

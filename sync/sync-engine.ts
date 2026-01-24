@@ -11,6 +11,7 @@ import {
   softDeleteByConvexId,
 } from '@/db/items-repository';
 import { LocalItem } from '@/db/types';
+import { logger } from '@/lib/logger';
 
 export interface SyncResult {
   pushed: number;
@@ -88,7 +89,7 @@ export async function pushChanges(
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       errors.push(`Failed to sync item ${item.id}: ${message}`);
-      console.error('Sync error for item:', item.id, error);
+      logger.error('Sync error for item:', item.id, error);
     }
   }
 
@@ -118,7 +119,7 @@ export async function pullChanges(
         try {
           await softDeleteByConvexId(localConvexId);
           deleted++;
-          console.log('[SyncEngine] Detected remote deletion:', localConvexId);
+          logger.debug('[SyncEngine] Detected remote deletion:', localConvexId);
         } catch (error) {
           const message = error instanceof Error ? error.message : 'Unknown error';
           errors.push(`Failed to delete locally ${localConvexId}: ${message}`);
@@ -170,7 +171,7 @@ export async function syncAll(
   // Ensure user exists in Convex before attempting sync
   const userExists = await ensureUserExists(convex);
   if (!userExists) {
-    console.log('[SyncEngine] User not found in Convex, skipping sync');
+    logger.warn('[SyncEngine] User not found in Convex, skipping sync');
     return {
       pushed: 0,
       pulled: 0,

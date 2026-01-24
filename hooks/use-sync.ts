@@ -7,6 +7,7 @@ import { useDatabaseReady } from '@/db/provider';
 import { useSyncSettings } from '@/contexts/sync-settings-context';
 import { syncAll, SyncResult } from '@/sync/sync-engine';
 import { subscribeToItemChanges, getPendingChanges } from '@/db/items-repository';
+import { logger } from '@/lib/logger';
 
 interface SyncState {
   isSyncing: boolean;
@@ -66,7 +67,7 @@ export function useSync(): SyncState & {
     const currentIsOnline = isOnlineRef.current;
     const currentIsSyncing = isSyncingRef.current;
 
-    console.log('[useSync] performSync called', {
+    logger.debug('[useSync] performSync called', {
       userId: !!currentUserId,
       isDbReady: currentIsDbReady,
       isOnline: currentIsOnline,
@@ -76,22 +77,22 @@ export function useSync(): SyncState & {
     
     // Skip sync if cloud sync is disabled
     if (!isCloudSyncEnabled) {
-      console.log('[useSync] performSync skipped - cloud sync disabled');
+      logger.debug('[useSync] performSync skipped - cloud sync disabled');
       return null;
     }
     
     if (!currentUserId || !currentIsDbReady || !currentIsOnline || currentIsSyncing) {
-      console.log('[useSync] performSync skipped - conditions not met');
+      logger.debug('[useSync] performSync skipped - conditions not met');
       return null;
     }
 
-    console.log('[useSync] Starting sync...');
+    logger.debug('[useSync] Starting sync...');
     isSyncingRef.current = true;
     setState((prev) => ({ ...prev, isSyncing: true, lastError: null }));
 
     try {
       const result = await syncAll(convex, currentUserId);
-      console.log('[useSync] Sync completed:', result);
+      logger.debug('[useSync] Sync completed:', result);
 
       if (isMountedRef.current) {
         setState((prev) => ({
@@ -120,13 +121,16 @@ export function useSync(): SyncState & {
 
   // Debounced sync on data change
   const scheduleDebouncedSync = useCallback(() => {
+    if (!isCloudSyncEnabled) {
+      return;
+    }
     if (syncTimeoutRef.current) {
       clearTimeout(syncTimeoutRef.current);
     }
     syncTimeoutRef.current = setTimeout(() => {
       performSync();
     }, SYNC_DEBOUNCE);
-  }, [performSync]);
+  }, [performSync, isCloudSyncEnabled]);
 
   // Update pending count
   const updatePendingCount = useCallback(async () => {
@@ -137,7 +141,7 @@ export function useSync(): SyncState & {
         setState((prev) => ({ ...prev, pendingCount: pending.length }));
       }
     } catch (error) {
-      console.error('Failed to get pending count:', error);
+      logger.error('Failed to get pending count:', error);
     }
   }, [userId, isDbReady]);
 
@@ -148,7 +152,7 @@ export function useSync(): SyncState & {
 
       setState((prev) => {
         // If coming online and was offline, trigger sync
-        if (isOnline && !prev.isOnline) {
+        if (isOnline && !prev.isOnline && isCloudSyncEnabled) {
           setTimeout(() => performSync(), 1000);
         }
         return { ...prev, isOnline };
@@ -156,12 +160,12 @@ export function useSync(): SyncState & {
     });
 
     return () => unsubscribe();
-  }, [performSync]);
+  }, [performSync, isCloudSyncEnabled]);
 
   // Listen to app state changes
   useEffect(() => {
     const handleAppStateChange = (nextAppState: AppStateStatus) => {
-      if (nextAppState === 'active' && state.isOnline) {
+      if (nextAppState === 'active' && state.isOnline && isCloudSyncEnabled) {
         // Sync when app becomes active
         performSync();
       }
@@ -169,22 +173,22 @@ export function useSync(): SyncState & {
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [performSync, state.isOnline]);
+  }, [performSync, state.isOnline, isCloudSyncEnabled]);
 
   // Subscribe to local data changes
   useEffect(() => {
     const unsubscribe = subscribeToItemChanges(() => {
       updatePendingCount();
-      if (state.isOnline) {
+      if (state.isOnline && isCloudSyncEnabled) {
         scheduleDebouncedSync();
       }
     });
     return unsubscribe;
-  }, [scheduleDebouncedSync, updatePendingCount, state.isOnline]);
+  }, [scheduleDebouncedSync, updatePendingCount, state.isOnline, isCloudSyncEnabled]);
 
   // Periodic sync interval
   useEffect(() => {
-    if (state.isOnline && userId && isDbReady) {
+    if (isCloudSyncEnabled && state.isOnline && userId && isDbReady) {
       intervalRef.current = setInterval(() => {
         performSync();
       }, SYNC_INTERVAL);
@@ -198,7 +202,7 @@ export function useSync(): SyncState & {
         clearInterval(intervalRef.current);
       }
     };
-  }, [state.isOnline, userId, isDbReady, performSync]);
+  }, [state.isOnline, userId, isDbReady, performSync, isCloudSyncEnabled]);
 
   // Initial pending count
   useEffect(() => {

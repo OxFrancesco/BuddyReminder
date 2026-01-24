@@ -15,6 +15,7 @@ import {
 } from '@/db/items-repository';
 import { LocalItem, CreateItemInput, UpdateItemInput, ItemType, ItemStatus } from '@/db/types';
 import { useCalendarSyncForItem } from './use-calendar-sync-effect';
+import { logger } from '@/lib/logger';
 
 // Hook to get all items for current user
 export function useLocalItems(options?: {
@@ -42,7 +43,7 @@ export function useLocalItems(options?: {
       const result = await getItemsByUser(userId, options);
       setItems(result);
     } catch (error) {
-      console.error('Failed to fetch items:', error);
+      logger.error('Failed to fetch items:', error);
     } finally {
       setIsLoading(false);
     }
@@ -84,7 +85,7 @@ export function useLocalItem(itemId: string | null): {
       const result = await getItemById(itemId);
       setItem(result);
     } catch (error) {
-      console.error('Failed to fetch item:', error);
+      logger.error('Failed to fetch item:', error);
     } finally {
       setIsLoading(false);
     }
@@ -96,13 +97,13 @@ export function useLocalItem(itemId: string | null): {
 
   // Subscribe to changes
   useEffect(() => {
-    console.log('[useLocalItem] Setting up subscription for item:', itemId);
+    logger.debug('[useLocalItem] Setting up subscription for item:', itemId);
     const unsubscribe = subscribeToItemChanges(() => {
-      console.log('[useLocalItem] Subscription triggered, refetching item:', itemId);
+      logger.debug('[useLocalItem] Subscription triggered, refetching item:', itemId);
       fetchItem();
     });
     return () => {
-      console.log('[useLocalItem] Cleaning up subscription for item:', itemId);
+      logger.debug('[useLocalItem] Cleaning up subscription for item:', itemId);
       unsubscribe();
     };
   }, [fetchItem, itemId]);
@@ -113,7 +114,7 @@ export function useLocalItem(itemId: string | null): {
 // Hook for item mutations
 export function useLocalItemMutations() {
   const { userId } = useAuth();
-  const syncToCalendar = useCalendarSyncForItem();
+  const { syncItem: syncToCalendar, deleteItem: deleteFromCalendar } = useCalendarSyncForItem();
 
   const createItem = useCallback(
     async (input: Omit<CreateItemInput, 'clerkUserId'>): Promise<LocalItem> => {
@@ -127,9 +128,9 @@ export function useLocalItemMutations() {
 
   const updateItem = useCallback(
     async (itemId: string, updates: UpdateItemInput): Promise<LocalItem | null> => {
-      console.log('[useLocalItemMutations] updateItem called', { itemId, updates });
+      logger.debug('[useLocalItemMutations] updateItem called', { itemId, updates });
       const result = await repoUpdateItem(itemId, updates);
-      console.log('[useLocalItemMutations] updateItem result', { itemId, result: result ? { body: result.body, isDailyHighlight: result.isDailyHighlight } : null });
+      logger.debug('[useLocalItemMutations] updateItem result', { itemId, result: result ? { body: result.body, isDailyHighlight: result.isDailyHighlight } : null });
       if (result) await syncToCalendar(result);
       return result;
     },
@@ -138,9 +139,9 @@ export function useLocalItemMutations() {
 
   const deleteItem = useCallback(async (itemId: string): Promise<void> => {
     const item = await getItemById(itemId);
-    if (item) await syncToCalendar({ ...item, deletedAt: Date.now() });
+    if (item) await deleteFromCalendar(item);
     return repoDeleteItem(itemId);
-  }, [syncToCalendar]);
+  }, [deleteFromCalendar]);
 
   const updateItemStatus = useCallback(
     async (itemId: string, status: ItemStatus): Promise<LocalItem | null> => {
@@ -153,9 +154,9 @@ export function useLocalItemMutations() {
 
   const toggleItemPin = useCallback(
     async (itemId: string, isPinned: boolean): Promise<LocalItem | null> => {
-      console.log('[useLocalItemMutations] toggleItemPin called', { itemId, isPinned });
+      logger.debug('[useLocalItemMutations] toggleItemPin called', { itemId, isPinned });
       const result = await repoToggleItemPin(itemId, isPinned);
-      console.log('[useLocalItemMutations] toggleItemPin result', { itemId, isPinned: result?.isPinned });
+      logger.debug('[useLocalItemMutations] toggleItemPin result', { itemId, isPinned: result?.isPinned });
       return result;
     },
     []
@@ -163,9 +164,9 @@ export function useLocalItemMutations() {
 
   const toggleItemDailyHighlight = useCallback(
     async (itemId: string, isDailyHighlight: boolean): Promise<LocalItem | null> => {
-      console.log('[useLocalItemMutations] toggleItemDailyHighlight called', { itemId, isDailyHighlight });
+      logger.debug('[useLocalItemMutations] toggleItemDailyHighlight called', { itemId, isDailyHighlight });
       const result = await repoToggleItemDailyHighlight(itemId, isDailyHighlight);
-      console.log('[useLocalItemMutations] toggleItemDailyHighlight result', { itemId, isDailyHighlight: result?.isDailyHighlight });
+      logger.debug('[useLocalItemMutations] toggleItemDailyHighlight result', { itemId, isDailyHighlight: result?.isDailyHighlight });
       return result;
     },
     []

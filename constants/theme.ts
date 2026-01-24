@@ -87,7 +87,7 @@ export const Colors = {
     shadow: "rgba(156, 163, 175, 0.18)",
     switchThumbActive: "#ffffff",
     switchThumbInactive: "#ffffff",
-    switchTrackInactive: "#d6d3d1",
+    switchTrackInactive: "#78716c",
 
     // Overlay colors
     overlay: "rgba(0, 0, 0, 0.5)",
@@ -147,7 +147,7 @@ export const Colors = {
     highlightForeground: "#1e1b18",
 
     // Type colors
-    typeNote: "#3a3633",
+    typeNote: "#78716c",
     typeReminder: "#f59e0b",
     typeTask: "#818cf8",
 

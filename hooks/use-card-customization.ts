@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { logger } from '@/lib/logger';
 
 export type CardType = 'note' | 'reminder' | 'task';
 
@@ -40,7 +41,7 @@ export function useCardCustomization() {
         setCustomizations(JSON.parse(stored));
       }
     } catch (error) {
-      console.error('Failed to load card customizations:', error);
+      logger.error('Failed to load card customizations:', error);
     } finally {
       setIsLoading(false);
     }
@@ -61,7 +62,7 @@ export function useCardCustomization() {
       setCustomizations(updated);
       notifyListeners();
     } catch (error) {
-      console.error('Failed to save card customization:', error);
+      logger.error('Failed to save card customization:', error);
     }
   };
 
@@ -71,7 +72,7 @@ export function useCardCustomization() {
       setCustomizations(DEFAULT_CUSTOMIZATIONS);
       notifyListeners();
     } catch (error) {
-      console.error('Failed to reset customizations:', error);
+      logger.error('Failed to reset customizations:', error);
     }
   };
 

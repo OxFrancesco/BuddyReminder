@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { getDatabase, closeDatabase } from './database';
+import { logger } from '@/lib/logger';
 
 interface DatabaseContextType {
   isReady: boolean;
@@ -28,7 +29,7 @@ export function DatabaseProvider({ children }: DatabaseProviderProps) {
           setIsReady(true);
         }
       } catch (error) {
-        console.error('Failed to initialize database:', error);
+        logger.error('Failed to initialize database:', error);
       }
     }
 

@@ -1,5 +1,6 @@
 import { Audio, AVPlaybackStatus } from 'expo-av';
 import { Platform } from 'react-native';
+import { logger } from '@/lib/logger';
 
 // Keep track of the current alarm sound
 let alarmSound: Audio.Sound | null = null;
@@ -29,9 +30,9 @@ export async function configureAudioSession(): Promise<void> {
       interruptionModeIOS: 1, // INTERRUPTION_MODE_IOS_DO_NOT_MIX
       interruptionModeAndroid: 1, // INTERRUPTION_MODE_ANDROID_DO_NOT_MIX
     });
-    console.log('[AlarmAudio] Audio session configured');
+    logger.debug('[AlarmAudio] Audio session configured');
   } catch (error) {
-    console.error('[AlarmAudio] Failed to configure audio session:', error);
+    logger.error('[AlarmAudio] Failed to configure audio session:', error);
   }
 }
 
@@ -40,7 +41,7 @@ export async function configureAudioSession(): Promise<void> {
  */
 export async function startAlarmSound(soundId?: string): Promise<void> {
   if (isPlaying) {
-    console.log('[AlarmAudio] Alarm is already playing');
+    logger.debug('[AlarmAudio] Alarm is already playing');
     return;
   }
 
@@ -65,9 +66,9 @@ export async function startAlarmSound(soundId?: string): Promise<void> {
     alarmSound = sound;
     isPlaying = true;
 
-    console.log('[AlarmAudio] Alarm sound started');
+    logger.debug('[AlarmAudio] Alarm sound started');
   } catch (error) {
-    console.error('[AlarmAudio] Failed to start alarm sound:', error);
+    logger.error('[AlarmAudio] Failed to start alarm sound:', error);
     // Try playing system sound as fallback
     await playSystemAlarmFallback();
   }
@@ -78,7 +79,7 @@ export async function startAlarmSound(soundId?: string): Promise<void> {
  */
 export async function stopAlarmSound(): Promise<void> {
   if (!alarmSound) {
-    console.log('[AlarmAudio] No alarm sound to stop');
+    logger.debug('[AlarmAudio] No alarm sound to stop');
     return;
   }
 
@@ -87,9 +88,9 @@ export async function stopAlarmSound(): Promise<void> {
     await alarmSound.unloadAsync();
     alarmSound = null;
     isPlaying = false;
-    console.log('[AlarmAudio] Alarm sound stopped');
+    logger.debug('[AlarmAudio] Alarm sound stopped');
   } catch (error) {
-    console.error('[AlarmAudio] Failed to stop alarm sound:', error);
+    logger.error('[AlarmAudio] Failed to stop alarm sound:', error);
     alarmSound = null;
     isPlaying = false;
   }
@@ -109,7 +110,7 @@ function onPlaybackStatusUpdate(status: AVPlaybackStatus): void {
   if (!status.isLoaded) {
     // Sound was unloaded or failed to load
     if ('error' in status) {
-      console.error('[AlarmAudio] Playback error:', status.error);
+      logger.error('[AlarmAudio] Playback error:', status.error);
     }
     isPlaying = false;
   } else if (status.didJustFinish && !status.isLooping) {
@@ -167,9 +168,9 @@ async function playSystemAlarmFallback(): Promise<void> {
 
     alarmSound = sound;
     isPlaying = true;
-    console.log('[AlarmAudio] Fallback alarm sound started');
+    logger.debug('[AlarmAudio] Fallback alarm sound started');
   } catch (error) {
-    console.error('[AlarmAudio] Fallback alarm sound also failed:', error);
+    logger.error('[AlarmAudio] Fallback alarm sound also failed:', error);
   }
 }
 
@@ -183,9 +184,9 @@ export async function pauseAlarmSound(): Promise<void> {
 
   try {
     await alarmSound.pauseAsync();
-    console.log('[AlarmAudio] Alarm sound paused');
+    logger.debug('[AlarmAudio] Alarm sound paused');
   } catch (error) {
-    console.error('[AlarmAudio] Failed to pause alarm sound:', error);
+    logger.error('[AlarmAudio] Failed to pause alarm sound:', error);
   }
 }
 
@@ -199,9 +200,9 @@ export async function resumeAlarmSound(): Promise<void> {
 
   try {
     await alarmSound.playAsync();
-    console.log('[AlarmAudio] Alarm sound resumed');
+    logger.debug('[AlarmAudio] Alarm sound resumed');
   } catch (error) {
-    console.error('[AlarmAudio] Failed to resume alarm sound:', error);
+    logger.error('[AlarmAudio] Failed to resume alarm sound:', error);
   }
 }
 
@@ -215,8 +216,8 @@ export async function setAlarmVolume(volume: number): Promise<void> {
 
   try {
     await alarmSound.setVolumeAsync(Math.max(0, Math.min(1, volume)));
-    console.log('[AlarmAudio] Volume set to:', volume);
+    logger.debug('[AlarmAudio] Volume set to:', volume);
   } catch (error) {
-    console.error('[AlarmAudio] Failed to set volume:', error);
+    logger.error('[AlarmAudio] Failed to set volume:', error);
   }
 }

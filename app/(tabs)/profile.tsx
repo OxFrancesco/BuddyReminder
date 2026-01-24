@@ -21,6 +21,7 @@ import { useCalendarSync } from "@/contexts/calendar-sync-context";
 import { SwipeableTab } from "@/components/swipeable-tab";
 import { useOAuth } from "@clerk/clerk-expo";
 import { useState } from "react";
+import { logger } from "@/lib/logger";
 
 export default function TabTwoScreen() {
   const insets = useSafeAreaInsets();
@@ -30,8 +31,8 @@ export default function TabTwoScreen() {
   const { themeMode, setThemeMode } = useTheme();
   const { syncMode, setSyncMode } = useSyncSettings();
   const { calendarSyncEnabled, setCalendarSyncEnabled } = useCalendarSync();
-  const { startOAuthFlow } = useOAuth({ 
-    strategy: "oauth_google"
+  const { startOAuthFlow } = useOAuth({
+    strategy: "oauth_google",
   });
   const [isRequestingAccess, setIsRequestingAccess] = useState(false);
   const colors = Colors[colorScheme ?? "light"];
@@ -42,6 +43,23 @@ export default function TabTwoScreen() {
       return;
     }
 
+    // Check if user already has Google connected
+    const googleAccount = user?.externalAccounts?.find(
+      (account) => account.provider === 'google'
+    );
+
+    if (googleAccount) {
+      // User already has Google connected - just enable the toggle
+      // If they don't have calendar scope, sync will fail gracefully on backend
+      setCalendarSyncEnabled(true);
+      Alert.alert(
+        'Calendar Sync Enabled',
+        'If calendar sync fails, you may need to sign out and sign back in to grant calendar permissions.'
+      );
+      return;
+    }
+
+    // No Google account connected - start OAuth flow
     try {
       setIsRequestingAccess(true);
       const { createdSessionId, setActive } = await startOAuthFlow();
@@ -50,7 +68,7 @@ export default function TabTwoScreen() {
         setCalendarSyncEnabled(true);
       }
     } catch (error) {
-      console.error('Calendar access error:', error);
+      logger.error('Calendar access error:', error);
       Alert.alert('Calendar Access', 'Failed to grant calendar access. Please try again.');
     } finally {
       setIsRequestingAccess(false);
@@ -184,7 +202,20 @@ export default function TabTwoScreen() {
           ]}
         >
           <View style={styles.syncOption}>
-            <ThemedText type="defaultSemiBold">Cloud Sync</ThemedText>
+            <View style={styles.syncLabelContainer}>
+              <ThemedText type="defaultSemiBold">Cloud Sync</ThemedText>
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert(
+                    "Cloud Sync",
+                    "Sync your notes and reminders across all your devices. When enabled, your data is backed up to the cloud and kept in sync in real-time."
+                  )
+                }
+                style={styles.infoButton}
+              >
+                <IconSymbol name="info.circle" size={18} color={colors.icon} />
+              </TouchableOpacity>
+            </View>
             <Switch
               value={syncMode === "cloud"}
               onValueChange={(value) => setSyncMode(value ? "cloud" : "local")}
@@ -211,7 +242,20 @@ export default function TabTwoScreen() {
           ]}
         >
           <View style={styles.syncOption}>
-            <ThemedText type="defaultSemiBold">Google Calendar Sync</ThemedText>
+            <View style={styles.syncLabelContainer}>
+              <ThemedText type="defaultSemiBold">Google Calendar Sync</ThemedText>
+              <TouchableOpacity
+                onPress={() =>
+                  Alert.alert(
+                    "Google Calendar Sync",
+                    "Automatically sync your reminders with Google Calendar. Your reminders will appear as calendar events and stay up-to-date across both apps."
+                  )
+                }
+                style={styles.infoButton}
+              >
+                <IconSymbol name="info.circle" size={18} color={colors.icon} />
+              </TouchableOpacity>
+            </View>
             <Switch
               value={calendarSyncEnabled}
               onValueChange={handleCalendarToggle}
@@ -315,6 +359,14 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
+  },
+  syncLabelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  infoButton: {
+    padding: 2,
   },
   section: {
     marginTop: 24,

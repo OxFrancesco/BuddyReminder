@@ -8,6 +8,7 @@ import {
   ItemStatus,
   SyncStatus,
 } from './types';
+import { logger } from '@/lib/logger';
 
 // Event emitter for reactivity
 type ItemChangeListener = () => void;
@@ -19,9 +20,19 @@ export function subscribeToItemChanges(listener: ItemChangeListener): () => void
 }
 
 function notifyListeners() {
-  console.log('[Repository] notifyListeners called, listener count:', listeners.size, new Error().stack?.split('\n').slice(1, 4).join('\n'));
+  logger.debug('[Repository] notifyListeners called', { listenerCount: listeners.size });
   listeners.forEach((listener) => listener());
 }
+
+const areJsonEqual = (left: unknown, right: unknown) => {
+  if (left === right) return true;
+  if (left == null || right == null) return false;
+  try {
+    return JSON.stringify(left) === JSON.stringify(right);
+  } catch {
+    return false;
+  }
+};
 
 // Create
 export async function createItem(input: CreateItemInput): Promise<LocalItem> {
@@ -101,7 +112,7 @@ export async function getItemById(id: string): Promise<LocalItem | null> {
     [id]
   );
   const item = row ? rowToItem(row) : null;
-  console.log('[Repository] getItemById', { id, found: !!item, body: item?.body, isDailyHighlight: item?.isDailyHighlight });
+  logger.debug('[Repository] getItemById', { id, found: !!item, body: item?.body, isDailyHighlight: item?.isDailyHighlight });
   return item;
 }
 
@@ -160,66 +171,77 @@ export async function updateItem(
   id: string,
   updates: UpdateItemInput
 ): Promise<LocalItem | null> {
-  console.log('[Repository] updateItem called', { id, updates });
+  logger.debug('[Repository] updateItem called', { id, updates });
   const db = await getDatabase();
-  const now = Date.now();
+  const existing = await getItemById(id);
+  if (!existing) {
+    return null;
+  }
 
-  const setClauses: string[] = ['updatedAt = ?', 'syncStatus = ?'];
-  const params: (string | number | null)[] = [now, 'pending'];
+  const setClauses: string[] = [];
+  const params: (string | number | null)[] = [];
 
-  if (updates.title !== undefined) {
+  if (updates.title !== undefined && updates.title !== existing.title) {
     setClauses.push('title = ?');
     params.push(updates.title);
   }
-  if (updates.body !== undefined) {
+  if (updates.body !== undefined && updates.body !== existing.body) {
     setClauses.push('body = ?');
     params.push(updates.body);
   }
-  if (updates.status !== undefined) {
+  if (updates.status !== undefined && updates.status !== existing.status) {
     setClauses.push('status = ?');
     params.push(updates.status);
   }
-  if (updates.isPinned !== undefined) {
+  if (updates.isPinned !== undefined && updates.isPinned !== existing.isPinned) {
     setClauses.push('isPinned = ?');
     params.push(updates.isPinned ? 1 : 0);
   }
-  if (updates.isDailyHighlight !== undefined) {
+  if (updates.isDailyHighlight !== undefined && updates.isDailyHighlight !== existing.isDailyHighlight) {
     setClauses.push('isDailyHighlight = ?');
     params.push(updates.isDailyHighlight ? 1 : 0);
   }
-  if (updates.triggerAt !== undefined) {
+  if (updates.triggerAt !== undefined && updates.triggerAt !== existing.triggerAt) {
     setClauses.push('triggerAt = ?');
     params.push(updates.triggerAt);
   }
-  if (updates.snoozeState !== undefined) {
+  if (updates.snoozeState !== undefined && !areJsonEqual(updates.snoozeState, existing.snoozeState)) {
     setClauses.push('snoozeState = ?');
     params.push(updates.snoozeState ? JSON.stringify(updates.snoozeState) : null);
   }
-  if (updates.alarmConfig !== undefined) {
+  if (updates.alarmConfig !== undefined && !areJsonEqual(updates.alarmConfig, existing.alarmConfig)) {
     setClauses.push('alarmConfig = ?');
     params.push(updates.alarmConfig ? JSON.stringify(updates.alarmConfig) : null);
   }
-  if (updates.notificationId !== undefined) {
+  if (updates.notificationId !== undefined && updates.notificationId !== existing.notificationId) {
     setClauses.push('notificationId = ?');
     params.push(updates.notificationId);
   }
 
+  if (setClauses.length === 0) {
+    logger.debug('[Repository] updateItem skipped - no changes', { id });
+    return existing;
+  }
+
+  const now = Date.now();
+  setClauses.push('updatedAt = ?', 'syncStatus = ?');
+  params.push(now, 'pending');
   params.push(id);
 
   const query = `UPDATE items SET ${setClauses.join(', ')} WHERE id = ?`;
-  console.log('[Repository] Running SQL:', query, 'params:', params);
+  logger.debug('[Repository] Running SQL:', query, 'params:', params);
 
   try {
     await db.runAsync(query, params);
-    console.log('[Repository] SQL executed successfully');
+    logger.debug('[Repository] SQL executed successfully');
   } catch (error) {
-    console.error('[Repository] SQL error:', error);
+    logger.error('[Repository] SQL error:', error);
     throw error;
   }
 
   notifyListeners();
   const result = await getItemById(id);
-  console.log('[Repository] updateItem returning:', { id, body: result?.body, isDailyHighlight: result?.isDailyHighlight });
+  logger.debug('[Repository] updateItem returning:', { id, body: result?.body, isDailyHighlight: result?.isDailyHighlight });
   return result;
 }
 
@@ -234,7 +256,7 @@ export async function toggleItemPin(
   id: string,
   isPinned: boolean
 ): Promise<LocalItem | null> {
-  console.log('[Repository] toggleItemPin called', { id, isPinned });
+  logger.debug('[Repository] toggleItemPin called', { id, isPinned });
   return updateItem(id, { isPinned });
 }
 
@@ -242,7 +264,7 @@ export async function toggleItemDailyHighlight(
   id: string,
   isDailyHighlight: boolean
 ): Promise<LocalItem | null> {
-  console.log('[Repository] toggleItemDailyHighlight called', { id, isDailyHighlight });
+  logger.debug('[Repository] toggleItemDailyHighlight called', { id, isDailyHighlight });
   return updateItem(id, { isDailyHighlight });
 }
 
@@ -334,20 +356,20 @@ export async function upsertFromRemote(
     updatedAt?: number;
   }
 ): Promise<LocalItem> {
-  console.log('[Repository] upsertFromRemote called for:', remoteItem.convexId, { isDailyHighlight: remoteItem.isDailyHighlight });
+  logger.debug('[Repository] upsertFromRemote called for:', remoteItem.convexId, { isDailyHighlight: remoteItem.isDailyHighlight });
   const db = await getDatabase();
   const now = Date.now();
   const remoteUpdatedAt = remoteItem.updatedAt ?? remoteItem.createdAt;
 
   // Check if item exists locally
   const existing = await getItemByConvexId(remoteItem.convexId);
-  console.log('[Repository] upsertFromRemote existing:', existing?.id, { syncStatus: existing?.syncStatus, localDailyHighlight: existing?.isDailyHighlight });
+  logger.debug('[Repository] upsertFromRemote existing:', existing?.id, { syncStatus: existing?.syncStatus, localDailyHighlight: existing?.isDailyHighlight });
 
   if (existing) {
     // Update existing item (only if not locally modified)
     if (existing.syncStatus === 'synced') {
       if (remoteUpdatedAt <= existing.updatedAt) {
-        console.log('[Repository] upsertFromRemote skipping - local is newer');
+        logger.debug('[Repository] upsertFromRemote skipping - local is newer');
         return existing;
       }
       // Check if data actually changed to avoid infinite sync loops
@@ -362,11 +384,11 @@ export async function upsertFromRemote(
         existing.repeatRule !== (remoteItem.repeatRule || null);
 
       if (!hasChanges) {
-        console.log('[Repository] upsertFromRemote skipping - no changes');
+        logger.debug('[Repository] upsertFromRemote skipping - no changes');
         return existing;
       }
 
-      console.log('[Repository] upsertFromRemote updating synced item');
+      logger.debug('[Repository] upsertFromRemote updating synced item');
       await db.runAsync(
         `UPDATE items SET
           title = ?, body = ?, status = ?, isPinned = ?, isDailyHighlight = ?,
@@ -394,7 +416,7 @@ export async function upsertFromRemote(
       notifyListeners();
       return (await getItemByConvexId(remoteItem.convexId))!;
     }
-    console.log('[Repository] upsertFromRemote skipping update - local changes pending');
+    logger.debug('[Repository] upsertFromRemote skipping update - local changes pending');
     return existing; // Local changes take precedence
   }
 

@@ -21,6 +21,7 @@ import {
   scheduleReminderNotification,
 } from "@/lib/notification-manager";
 import { ItemType, TaskSpec } from "@/db/types";
+import { logger } from "@/lib/logger";
 
 interface QuickCaptureModalProps {
   visible: boolean;
@@ -114,24 +115,24 @@ export default function QuickCaptureModal({
   };
 
   const handleSave = async () => {
-    console.log("[QuickCapture] handleSave called");
-    console.log("[QuickCapture] input:", input);
-    console.log("[QuickCapture] input.trim():", input.trim());
+    logger.debug("[QuickCapture] handleSave called");
+    logger.debug("[QuickCapture] input:", input);
+    logger.debug("[QuickCapture] input.trim():", input.trim());
 
     if (!input.trim()) {
-      console.log("[QuickCapture] Empty input, returning early");
+      logger.debug("[QuickCapture] Empty input, returning early");
       return;
     }
 
     setIsLoading(true);
-    console.log("[QuickCapture] isLoading set to true");
+    logger.debug("[QuickCapture] isLoading set to true");
 
     try {
       const parsed = parseInput(input);
-      console.log("[QuickCapture] Parsed input:", JSON.stringify(parsed, null, 2));
+      logger.debug("[QuickCapture] Parsed input:", JSON.stringify(parsed, null, 2));
 
       // Create item locally (instant)
-      console.log("[QuickCapture] Calling createItem with:", {
+      logger.debug("[QuickCapture] Calling createItem with:", {
         type: parsed.type,
         title: parsed.title,
         isPinned: isPinned,
@@ -147,43 +148,43 @@ export default function QuickCaptureModal({
         taskSpec: parsed.taskSpec,
       });
 
-      console.log("[QuickCapture] Item created:", JSON.stringify(item, null, 2));
+      logger.debug("[QuickCapture] Item created:", JSON.stringify(item, null, 2));
 
       // Schedule notifications based on type
       if (isPinned && parsed.type === "note") {
-        console.log("[QuickCapture] Scheduling sticky notification");
+        logger.debug("[QuickCapture] Scheduling sticky notification");
         const notificationId = await scheduleStickyNotification(
           item.id,
           parsed.title,
         );
-        console.log("[QuickCapture] Sticky notification ID:", notificationId);
+        logger.debug("[QuickCapture] Sticky notification ID:", notificationId);
         if (notificationId) {
           await setNotificationId(item.id, notificationId);
         }
       } else if (parsed.type === "reminder" && parsed.triggerAt) {
-        console.log("[QuickCapture] Scheduling reminder notification");
+        logger.debug("[QuickCapture] Scheduling reminder notification");
         const notificationId = await scheduleReminderNotification(
           item.id,
           parsed.title,
           parsed.triggerAt,
         );
-        console.log("[QuickCapture] Reminder notification ID:", notificationId);
+        logger.debug("[QuickCapture] Reminder notification ID:", notificationId);
         if (notificationId) {
           await setNotificationId(item.id, notificationId);
         }
       }
 
-      console.log("[QuickCapture] Save successful, closing modal");
+      logger.debug("[QuickCapture] Save successful, closing modal");
       setInput("");
       setIsPinned(false);
       onClose();
     } catch (error) {
-      console.error("[QuickCapture] Error saving item:", error);
-      console.error("[QuickCapture] Error stack:", (error as Error).stack);
+      logger.error("[QuickCapture] Error saving item:", error);
+      logger.error("[QuickCapture] Error stack:", (error as Error).stack);
       Alert.alert("Error", "Failed to save item. Please try again.");
     } finally {
       setIsLoading(false);
-      console.log("[QuickCapture] isLoading set to false");
+      logger.debug("[QuickCapture] isLoading set to false");
     }
   };
 
