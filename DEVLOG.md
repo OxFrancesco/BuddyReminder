@@ -1,5 +1,33 @@
 # Development Log
 
+## 2026-01-24 (Evening Session)
+
+### Deep Linking & Universal Links
+- Implemented deep linking support for both iOS and Android platforms
+- Configured associated domains for iOS (reminder.buddytools.org)
+- Added Android intent filters with autoVerify for app links
+- Enables sharing reminders via URLs across platforms
+- Universal links (iOS) and app links (Android) fully configured
+
+### iOS Privacy & Compliance
+- Added privacy manifest configuration for App Store compliance
+- Set NSPrivacyTracking to false (no user tracking)
+- Configured empty tracking domains and data types arrays
+- Added build number tracking for version management
+- Privacy manifest meets Apple's latest requirements
+
+### Android Build Configuration
+- Added version code for build tracking and updates
+- Configured HTTPS scheme handling for deep links
+- Set up intent filters with BROWSABLE and DEFAULT categories
+- Proper deep link verification with autoVerify flag
+
+### Asset Organization & Cleanup
+- Renamed widget images from "Plius Widget" to "plus" for consistency
+- Added notification-icon.png for better notification display
+- Updated SVG and JPG assets with cleaner, more consistent naming
+- Better asset organization for maintainability
+
 ## 2026-01-24 (Afternoon Session)
 
 ### Major Code Cleanup & Refactoring
