@@ -10,6 +10,13 @@
     "newArchEnabled": true,
     "ios": {
       "supportsTablet": true,
+      "buildNumber": "1",
+      "privacyManifest": {
+        "NSPrivacyTracking": false,
+        "NSPrivacyTrackingDomains": [],
+        "NSPrivacyCollectedDataTypes": [],
+        "NSPrivacyAccessedAPITypes": []
+      },
       "infoPlist": {
         "CFBundleURLTypes": [
           {
@@ -29,6 +36,9 @@
           "audio"
         ]
       },
+      "associatedDomains": [
+        "applinks:reminder.buddytools.org"
+      ],
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.buddyreminder"
@@ -48,6 +58,24 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
+      "versionCode": 1,
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "reminder.buddytools.org",
+              "pathPrefix": "/"
+            }
+          ],
+          "category": [
+            "BROWSABLE",
+            "DEFAULT"
+          ]
+        }
+      ],
       "permissions": [
         "android.permission.NFC",
         "android.permission.VIBRATE"
