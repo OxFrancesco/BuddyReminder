@@ -16,7 +16,7 @@ export default function HomeScreen() {
   useUserSync(); // Automatically sync user data
 
   return (
-    <SwipeableTab onTwoFingerTap={() => setShowQuickCapture(true)}>
+    <SwipeableTab onPinch={() => setShowQuickCapture(true)}>
       <ThemedView style={styles.container}>
         {!isSignedIn ? (
           <AuthScreen />

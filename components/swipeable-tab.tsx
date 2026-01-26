@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { useRouter, usePathname } from "expo-router";
 import { StyleSheet } from "react-native";
 import { Gesture, GestureDetector } from "react-native-gesture-handler";
@@ -18,12 +19,13 @@ function normalizePathname(pathname: string): string {
 
 interface SwipeableTabProps {
   children: React.ReactNode;
-  onTwoFingerTap?: () => void;
+  onPinch?: () => void;
 }
 
-export function SwipeableTab({ children, onTwoFingerTap }: SwipeableTabProps) {
+export function SwipeableTab({ children, onPinch }: SwipeableTabProps) {
   const router = useRouter();
   const pathname = usePathname();
+  const pinchTriggered = useRef(false);
 
   // Handle swipe navigation - runs on JS thread
   const handleSwipe = (translationX: number) => {
@@ -48,25 +50,27 @@ export function SwipeableTab({ children, onTwoFingerTap }: SwipeableTabProps) {
     })
     .runOnJS(true);
 
-  // Two-finger tap for quick actions (only on home tab)
-  const twoFingerTap = Gesture.Tap()
-    .numberOfTaps(1)
-    .minPointers(2)
-    .maxDuration(500)
+  // Pinch gesture for quick capture
+  const pinch = Gesture.Pinch()
     .onBegin(() => {
-      logger.debug("[GESTURE] Two-finger tap began");
+      pinchTriggered.current = false;
+      logger.debug("[GESTURE] Pinch began");
     })
-    .onEnd(() => {
-      logger.debug("[GESTURE] Two-finger tap ended");
-      if (onTwoFingerTap) {
-        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-        onTwoFingerTap();
+    .onUpdate((event) => {
+      // Trigger on pinch-in (scale < 0.85) or pinch-out (scale > 1.15)
+      if (!pinchTriggered.current && (event.scale < 0.85 || event.scale > 1.15)) {
+        pinchTriggered.current = true;
+        logger.debug("[GESTURE] Pinch triggered", { scale: event.scale });
+        if (onPinch) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          onPinch();
+        }
       }
     })
     .runOnJS(true);
 
   // Compose gestures - both can work simultaneously
-  const composedGesture = Gesture.Simultaneous(pan, twoFingerTap);
+  const composedGesture = Gesture.Simultaneous(pan, pinch);
 
   return (
     <GestureDetector gesture={composedGesture}>
