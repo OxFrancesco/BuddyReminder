@@ -22,7 +22,6 @@ import {
 } from "@/lib/notification-manager";
 import { setupAlarmNotificationHandler } from "@/lib/alarm-service";
 import { initializeNfc } from "@/lib/nfc-service";
-import { useAddCardWidget } from "@/hooks/use-add-card-widget";
 
 export const unstable_settings = {
   anchor: "(tabs)",
@@ -30,7 +29,6 @@ export const unstable_settings = {
 
 function RootLayoutNav() {
   const colorScheme = useColorScheme();
-  useAddCardWidget();
 
   useEffect(() => {
     // Setup notification channels (Android)
@@ -42,10 +40,8 @@ function RootLayoutNav() {
     // Setup alarm notification handler
     const alarmCleanup = setupAlarmNotificationHandler();
 
-    // Initialize NFC (non-blocking)
-    initializeNfc().catch(() => {
-      // NFC not available - this is fine, we handle it gracefully
-    });
+    // Initialize NFC (synchronous check)
+    initializeNfc();
 
     return () => {
       notificationCleanup();
@@ -74,6 +70,20 @@ function RootLayoutNav() {
           options={{
             presentation: "modal",
             title: "NFC Tags",
+          }}
+        />
+        <Stack.Screen
+          name="nfc-debug"
+          options={{
+            presentation: "modal",
+            title: "NFC Diagnostics",
+          }}
+        />
+        <Stack.Screen
+          name="nfc-register"
+          options={{
+            presentation: "fullScreenModal",
+            title: "Register NFC Tag",
           }}
         />
       </Stack>

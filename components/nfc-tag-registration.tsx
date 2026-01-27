@@ -6,6 +6,7 @@ import {
   Modal,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { ThemedText } from '@/components/themed-text';
@@ -20,7 +21,6 @@ import {
   cancelScan,
   isNfcSupported,
   isNfcEnabled,
-  openNfcSettings,
   formatTagIdForDisplay,
 } from '@/lib/nfc-service';
 
@@ -28,6 +28,7 @@ interface NfcTagRegistrationProps {
   visible: boolean;
   onClose: () => void;
   onTagRegistered: (tagId: string) => void;
+  mode?: 'modal' | 'screen';
 }
 
 type RegistrationStep = 'intro' | 'scanning' | 'naming' | 'success' | 'error';
@@ -36,6 +37,7 @@ export default function NfcTagRegistration({
   visible,
   onClose,
   onTagRegistered,
+  mode = 'modal',
 }: NfcTagRegistrationProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -60,8 +62,13 @@ export default function NfcTagRegistration({
   const handleStartScan = useCallback(async () => {
     setErrorMessage(null);
 
+    if (Platform.OS === 'android') {
+      Alert.alert('Coming Soon', 'NFC tag scanning is coming soon on Android.');
+      return;
+    }
+
     // Check NFC support
-    const supported = await isNfcSupported();
+    const supported = isNfcSupported();
     if (!supported) {
       setErrorMessage('NFC is not supported on this device');
       setStep('error');
@@ -69,15 +76,11 @@ export default function NfcTagRegistration({
     }
 
     // Check if NFC is enabled
-    const enabled = await isNfcEnabled();
+    const enabled = isNfcEnabled();
     if (!enabled) {
       Alert.alert(
-        'NFC Disabled',
-        'Please enable NFC in your device settings to register a tag.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Open Settings', onPress: openNfcSettings },
-        ]
+        'NFC Not Available',
+        'NFC is not available on this device.',
       );
       return;
     }
@@ -251,29 +254,53 @@ export default function NfcTagRegistration({
     }
   };
 
+  const registrationBody = (
+    <ThemedView style={[styles.container, { backgroundColor: colors.background }]}>
+      <View style={[styles.header, { borderBottomColor: colors.border }]}>
+        <TouchableOpacity onPress={handleClose}>
+          <ThemedText style={{ color: colors.tint }}>Cancel</ThemedText>
+        </TouchableOpacity>
+        <ThemedText style={styles.headerTitle}>Register NFC Tag</ThemedText>
+        <View style={{ width: 50 }} />
+      </View>
+
+      <View style={styles.content}>{renderContent()}</View>
+    </ThemedView>
+  );
+
+  if (mode === 'screen') {
+    return registrationBody;
+  }
+
+  // On iOS, presenting a Modal on top of another sheet can fail silently.
+  // Render an inline full-screen overlay instead.
+  if (Platform.OS === 'ios') {
+    if (!visible) return null;
+    return <View style={styles.overlay}>{registrationBody}</View>;
+  }
+
   return (
     <Modal
       visible={visible}
       animationType="slide"
-      presentationStyle="pageSheet"
+      presentationStyle="fullScreen"
       onRequestClose={handleClose}
     >
-      <ThemedView style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={handleClose}>
-            <ThemedText style={{ color: colors.tint }}>Cancel</ThemedText>
-          </TouchableOpacity>
-          <ThemedText style={styles.headerTitle}>Register NFC Tag</ThemedText>
-          <View style={{ width: 50 }} />
-        </View>
-
-        <View style={styles.content}>{renderContent()}</View>
-      </ThemedView>
+      {registrationBody}
     </Modal>
   );
 }
 
 const styles = StyleSheet.create({
+  overlay: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    bottom: 0,
+    left: 0,
+    zIndex: 1000,
+    elevation: 1000,
+  },
   container: {
     flex: 1,
   },

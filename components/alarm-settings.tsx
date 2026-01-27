@@ -6,6 +6,7 @@ import {
   TextInput,
   Alert,
   Modal,
+  Platform,
 } from 'react-native';
 import { useState, useCallback, useEffect } from 'react';
 import { ThemedText } from '@/components/themed-text';
@@ -13,11 +14,10 @@ import { ThemedView } from '@/components/themed-view';
 import { IconSymbol } from '@/components/ui/icon-symbol';
 import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
-import { AlarmConfig, AlarmDismissMethod, NfcTag } from '@/db/types';
+import { AlarmConfig, AlarmDismissMethod } from '@/db/types';
 import { useQuery } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { isNfcSupported } from '@/lib/nfc-service';
-import NfcTagRegistration from './nfc-tag-registration';
 
 interface AlarmSettingsProps {
   alarmConfig: AlarmConfig | null;
@@ -42,7 +42,6 @@ export default function AlarmSettings({
     alarmConfig?.dismissCode ?? ''
   );
   const [showTagPicker, setShowTagPicker] = useState(false);
-  const [showTagRegistration, setShowTagRegistration] = useState(false);
   const [nfcAvailable, setNfcAvailable] = useState(false);
 
   // Fetch user's registered NFC tags
@@ -50,11 +49,7 @@ export default function AlarmSettings({
 
   // Check NFC availability on mount
   useEffect(() => {
-    const checkNfc = async () => {
-      const supported = await isNfcSupported();
-      setNfcAvailable(supported);
-    };
-    checkNfc();
+    setNfcAvailable(isNfcSupported());
   }, []);
 
   // Build config from current state
@@ -88,7 +83,13 @@ export default function AlarmSettings({
   // Handle dismiss method change
   const handleDismissMethodChange = (method: AlarmDismissMethod) => {
     let finalMethod = method;
-    if (method === 'nfc' && !nfcAvailable) {
+    if (Platform.OS === 'android' && (method === 'nfc' || method === 'either')) {
+      Alert.alert(
+        'Coming Soon',
+        'NFC dismiss is coming soon on Android. Using code dismiss instead.'
+      );
+      finalMethod = 'code';
+    } else if (method === 'nfc' && !nfcAvailable) {
       Alert.alert(
         'NFC Not Available',
         'NFC is not supported on this device. Please choose a different dismiss method.'
@@ -106,13 +107,9 @@ export default function AlarmSettings({
     onChange(buildConfig(isEnabled, dismissMethod, tagId, dismissCode));
   };
 
-  // Handle new tag registration
-  const handleTagRegistered = (tagId: string) => {
-    setSelectedTagId(tagId);
-    setShowTagRegistration(false);
-    setShowTagPicker(false);
-    onChange(buildConfig(isEnabled, dismissMethod, tagId, dismissCode));
-  };
+  const showRegistrationComingSoon = useCallback(() => {
+    Alert.alert('Coming Soon', 'NFC tag registration is coming soon.');
+  }, []);
 
   // Handle dismiss code change
   const handleDismissCodeChange = (code: string) => {
@@ -298,76 +295,71 @@ export default function AlarmSettings({
         onRequestClose={() => setShowTagPicker(false)}
       >
         <ThemedView style={styles.modalContainer}>
-          <View style={styles.modalHeader}>
-            <TouchableOpacity onPress={() => setShowTagPicker(false)}>
-              <ThemedText style={{ color: colors.tint }}>Cancel</ThemedText>
-            </TouchableOpacity>
-            <ThemedText style={styles.modalTitle}>Select NFC Tag</ThemedText>
-            <TouchableOpacity onPress={() => setShowTagRegistration(true)}>
-              <ThemedText style={{ color: colors.tint }}>Add New</ThemedText>
-            </TouchableOpacity>
-          </View>
-
-          {/* Tag List */}
-          {userTags && userTags.length > 0 ? (
-            <View style={styles.tagList}>
-              {userTags.map((tag) => (
-                <TouchableOpacity
-                  key={tag._id}
-                  style={[
-                    styles.tagItem,
-                    {
-                      borderColor: colors.border,
-                      backgroundColor:
-                        tag.tagId === selectedTagId
-                          ? colors.tint + '20'
-                          : colors.backgroundSecondary,
-                    },
-                  ]}
-                  onPress={() => handleTagSelect(tag.tagId)}
-                >
-                  <IconSymbol
-                    name="wave.3.right"
-                    size={24}
-                    color={tag.tagId === selectedTagId ? colors.tint : colors.icon}
-                  />
-                  <View style={styles.tagInfo}>
-                    <ThemedText style={styles.tagLabel}>{tag.label}</ThemedText>
-                    <ThemedText style={[styles.tagId, { color: colors.icon }]}>
-                      {tag.tagId.slice(0, 8)}...
-                    </ThemedText>
-                  </View>
-                  {tag.tagId === selectedTagId && (
-                    <IconSymbol name="checkmark" size={24} color={colors.tint} />
-                  )}
-                </TouchableOpacity>
-              ))}
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <IconSymbol name="wave.3.right" size={48} color={colors.icon} />
-              <ThemedText style={[styles.emptyText, { color: colors.icon }]}>
-                No NFC tags registered
-              </ThemedText>
-              <TouchableOpacity
-                style={[styles.addButton, { backgroundColor: colors.tint }]}
-                onPress={() => setShowTagRegistration(true)}
-              >
-                <ThemedText style={{ color: colors.background }}>
-                  Register Your First Tag
-                </ThemedText>
+          <>
+            <View style={styles.modalHeader}>
+              <TouchableOpacity onPress={() => setShowTagPicker(false)}>
+                <ThemedText style={{ color: colors.tint }}>Cancel</ThemedText>
+              </TouchableOpacity>
+              <ThemedText style={styles.modalTitle}>Select NFC Tag</ThemedText>
+              <TouchableOpacity onPress={showRegistrationComingSoon}>
+                <ThemedText style={{ color: colors.tint }}>Add New</ThemedText>
               </TouchableOpacity>
             </View>
-          )}
+
+            {/* Tag List */}
+            {userTags && userTags.length > 0 ? (
+              <View style={styles.tagList}>
+                {userTags.map((tag) => (
+                  <TouchableOpacity
+                    key={tag._id}
+                    style={[
+                      styles.tagItem,
+                      {
+                        borderColor: colors.border,
+                        backgroundColor:
+                          tag.tagId === selectedTagId
+                            ? colors.tint + '20'
+                            : colors.backgroundSecondary,
+                      },
+                    ]}
+                    onPress={() => handleTagSelect(tag.tagId)}
+                  >
+                    <IconSymbol
+                      name="wave.3.right"
+                      size={24}
+                      color={tag.tagId === selectedTagId ? colors.tint : colors.icon}
+                    />
+                    <View style={styles.tagInfo}>
+                      <ThemedText style={styles.tagLabel}>{tag.label}</ThemedText>
+                      <ThemedText style={[styles.tagId, { color: colors.icon }]}>
+                        {tag.tagId.slice(0, 8)}...
+                      </ThemedText>
+                    </View>
+                    {tag.tagId === selectedTagId && (
+                      <IconSymbol name="checkmark" size={24} color={colors.tint} />
+                    )}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <IconSymbol name="wave.3.right" size={48} color={colors.icon} />
+                <ThemedText style={[styles.emptyText, { color: colors.icon }]}>
+                  NFC tag registration is coming soon.
+                </ThemedText>
+                <TouchableOpacity
+                  style={[styles.addButton, { backgroundColor: colors.tint }]}
+                  onPress={showRegistrationComingSoon}
+                >
+                  <ThemedText style={{ color: colors.background }}>
+                    Register Your First Tag
+                  </ThemedText>
+                </TouchableOpacity>
+              </View>
+            )}
+          </>
         </ThemedView>
       </Modal>
-
-      {/* Tag Registration Modal */}
-      <NfcTagRegistration
-        visible={showTagRegistration}
-        onClose={() => setShowTagRegistration(false)}
-        onTagRegistered={handleTagRegistered}
-      />
     </ThemedView>
   );
 }

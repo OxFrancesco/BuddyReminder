@@ -9,6 +9,7 @@ interface CodeEntryPadProps {
   onSubmit: (code: string) => void;
   onCancel?: () => void;
   error?: string | null;
+  hint?: string | null;
 }
 
 export default function CodeEntryPad({
@@ -16,6 +17,7 @@ export default function CodeEntryPad({
   onSubmit,
   onCancel,
   error,
+  hint,
 }: CodeEntryPadProps) {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
@@ -89,6 +91,12 @@ export default function CodeEntryPad({
       {error && (
         <ThemedText style={[styles.error, { color: colors.background }]}>
           {error}
+        </ThemedText>
+      )}
+
+      {hint && (
+        <ThemedText style={[styles.hint, { color: colors.background }]}>
+          {hint}
         </ThemedText>
       )}
 
@@ -168,6 +176,11 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   error: {
+    fontSize: 16,
+    marginBottom: 16,
+    textAlign: 'center',
+  },
+  hint: {
     fontSize: 16,
     marginBottom: 16,
     textAlign: 'center',

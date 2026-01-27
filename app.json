@@ -19,7 +19,6 @@
             ]
           }
         ],
-        "NFCReaderUsageDescription": "Scan NFC tag to dismiss alarm",
         "UIBackgroundModes": [
           "audio"
         ],
@@ -31,9 +30,6 @@
       "entitlements": {
         "com.apple.security.application-groups": [
           "group.com.buddyreminder"
-        ],
-        "com.apple.developer.nfc.readersession.formats": [
-          "TAG"
         ]
       },
       "bundleIdentifier": "com.avg-francesco.BuddyReminder"
@@ -66,7 +62,6 @@
         }
       ],
       "permissions": [
-        "android.permission.NFC",
         "android.permission.VIBRATE"
       ],
       "package": "com.avgfrancesco.BuddyReminder"
@@ -96,6 +91,7 @@
         }
       ],
       "expo-sqlite",
+      "./modules/expo-nfc-reader/app.plugin.js",
       [
         "expo-build-properties",
         {

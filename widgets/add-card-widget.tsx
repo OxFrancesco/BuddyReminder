@@ -10,7 +10,7 @@ export const AddCardWidget = () => {
     >
       <Voltra.VStack style={{ flex: 1, padding: 16 }}>
         <Voltra.Image
-          source={require('@/assets/images/Plius Widget.jpg')}
+          source={require('@/assets/images/plus.jpg')}
           style={{ width: 80, height: 80 }}
         />
       </Voltra.VStack>

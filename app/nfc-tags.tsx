@@ -5,6 +5,7 @@ import {
   FlatList,
   Alert,
   TextInput,
+  Platform,
 } from 'react-native';
 import { useState, useCallback } from 'react';
 import { Stack, router } from 'expo-router';
@@ -16,7 +17,6 @@ import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useQuery, useMutation } from 'convex/react';
 import { api } from '@/convex/_generated/api';
 import { Id } from '@/convex/_generated/dataModel';
-import NfcTagRegistration from '@/components/nfc-tag-registration';
 import { formatTagIdForDisplay, scanTag, isNfcSupported } from '@/lib/nfc-service';
 
 interface NfcTagItem {
@@ -31,8 +31,8 @@ interface NfcTagItem {
 export default function NfcTagsScreen() {
   const colorScheme = useColorScheme();
   const colors = Colors[colorScheme ?? 'light'];
+  const isAndroid = Platform.OS === 'android';
 
-  const [showRegistration, setShowRegistration] = useState(false);
   const [editingTagId, setEditingTagId] = useState<Id<'nfcTags'> | null>(null);
   const [editLabel, setEditLabel] = useState('');
   const [testingTagId, setTestingTagId] = useState<string | null>(null);
@@ -44,9 +44,8 @@ export default function NfcTagsScreen() {
   const updateTagLabel = useMutation(api.nfcTags.updateTagLabel);
   const deleteTag = useMutation(api.nfcTags.deleteTag);
 
-  // Handle tag registered
-  const handleTagRegistered = useCallback(() => {
-    setShowRegistration(false);
+  const showComingSoon = useCallback(() => {
+    Alert.alert('Coming Soon', 'NFC tag registration is coming soon.');
   }, []);
 
   // Handle edit tag label
@@ -104,7 +103,7 @@ export default function NfcTagsScreen() {
 
   // Test tag scan
   const handleTestTag = useCallback(async (tag: NfcTagItem) => {
-    const supported = await isNfcSupported();
+    const supported = isNfcSupported();
     if (!supported) {
       Alert.alert('NFC Not Available', 'NFC is not supported on this device');
       return;
@@ -230,12 +229,12 @@ export default function NfcTagsScreen() {
       <IconSymbol name="wave.3.right" size={80} color={colors.icon} />
       <ThemedText style={styles.emptyTitle}>No NFC Tags</ThemedText>
       <ThemedText style={[styles.emptyDescription, { color: colors.icon }]}>
-        Register NFC tags to use them for dismissing alarms. Place tags in locations
-        you need to physically visit to wake up!
+        NFC tag registration is coming soon. You'll be able to register tags to
+        dismiss alarms once it's ready.
       </ThemedText>
       <TouchableOpacity
         style={[styles.addButton, { backgroundColor: colors.tint }]}
-        onPress={() => setShowRegistration(true)}
+        onPress={showComingSoon}
       >
         <IconSymbol name="plus" size={20} color={colors.background} />
         <ThemedText style={[styles.addButtonText, { color: colors.background }]}>
@@ -245,15 +244,35 @@ export default function NfcTagsScreen() {
     </View>
   );
 
+  if (isAndroid) {
+    return (
+      <ThemedView style={styles.container}>
+        <Stack.Screen options={{ title: 'NFC Tags' }} />
+        <View style={styles.emptyState}>
+          <IconSymbol name="wave.3.right" size={80} color={colors.icon} />
+          <ThemedText style={styles.emptyTitle}>Coming Soon</ThemedText>
+          <ThemedText style={[styles.emptyDescription, { color: colors.icon }]}>
+            NFC tag management is coming soon on Android.
+          </ThemedText>
+        </View>
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen
         options={{
           title: 'NFC Tags',
           headerRight: () => (
-            <TouchableOpacity onPress={() => setShowRegistration(true)}>
-              <IconSymbol name="plus" size={24} color={colors.tint} />
-            </TouchableOpacity>
+            <View style={styles.headerActions}>
+              <TouchableOpacity onPress={() => router.push('/nfc-debug')}>
+                <IconSymbol name="info.circle" size={24} color={colors.tint} />
+              </TouchableOpacity>
+              <TouchableOpacity onPress={showComingSoon}>
+                <IconSymbol name="plus" size={24} color={colors.tint} />
+              </TouchableOpacity>
+            </View>
           ),
         }}
       />
@@ -266,11 +285,6 @@ export default function NfcTagsScreen() {
         ListEmptyComponent={renderEmptyState}
       />
 
-      <NfcTagRegistration
-        visible={showRegistration}
-        onClose={() => setShowRegistration(false)}
-        onTagRegistered={handleTagRegistered}
-      />
     </ThemedView>
   );
 }
@@ -360,5 +374,10 @@ const styles = StyleSheet.create({
   addButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
   },
 });

@@ -1,4 +1,4 @@
 .PHONY: dev
 
 dev:
-	bunx convex dev & npx expo start --ios
+	bunx convex dev & npx expo start --dev-client --ios

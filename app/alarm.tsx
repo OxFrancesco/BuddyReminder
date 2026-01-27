@@ -4,6 +4,7 @@ import {
   TouchableOpacity,
   Vibration,
   BackHandler,
+  Platform,
 } from 'react-native';
 import { useState, useEffect, useCallback } from 'react';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -14,7 +15,7 @@ import { Colors } from '@/constants/theme';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { useLocalItem, useLocalItemMutations } from '@/hooks/use-local-items';
 import { startAlarmSound, stopAlarmSound } from '@/lib/alarm-audio';
-import { scanTag, isNfcSupported, isNfcEnabled } from '@/lib/nfc-service';
+import { scanTag, isNfcSupported, cancelScan } from '@/lib/nfc-service';
 import CodeEntryPad from '@/components/code-entry-pad';
 import { AlarmDismissMethod } from '@/db/types';
 
@@ -38,6 +39,7 @@ export default function AlarmScreen() {
   const [nfcStatus, setNfcStatus] = useState<'checking' | 'scanning' | 'success' | 'error'>('checking');
   const [nfcError, setNfcError] = useState<string | null>(null);
   const [codeError, setCodeError] = useState<string | null>(null);
+  const [failedCodeAttempts, setFailedCodeAttempts] = useState(0);
 
   // Start alarm sound and vibration on mount
   useEffect(() => {
@@ -88,17 +90,8 @@ export default function AlarmScreen() {
     setNfcError(null);
 
     // Check NFC support
-    const supported = await isNfcSupported();
-    if (!supported) {
+    if (!isNfcSupported()) {
       setNfcError('NFC is not supported on this device');
-      setNfcStatus('error');
-      setAlarmState('ringing');
-      return;
-    }
-
-    const enabled = await isNfcEnabled();
-    if (!enabled) {
-      setNfcError('Please enable NFC in your device settings');
       setNfcStatus('error');
       setAlarmState('ringing');
       return;
@@ -132,6 +125,15 @@ export default function AlarmScreen() {
     }
   }, [params.registeredNfcTagId, handleDismiss]);
 
+  // Cancel NFC scanning session if the user backs out of the scan UI
+  const handleCancelNfcScan = useCallback(async () => {
+    try {
+      await cancelScan();
+    } finally {
+      setAlarmState('ringing');
+    }
+  }, []);
+
   // Handle code entry for dismissal
   const handleCodeSubmit = useCallback(
     async (enteredCode: string) => {
@@ -141,6 +143,7 @@ export default function AlarmScreen() {
         await handleDismiss();
       } else {
         setCodeError('Incorrect code. Please try again.');
+        setFailedCodeAttempts((prev) => prev + 1);
       }
     },
     [params.dismissCode, handleDismiss]
@@ -166,6 +169,8 @@ export default function AlarmScreen() {
 
   // Render based on alarm state
   if (alarmState === 'entering_code') {
+    const shouldRevealCode =
+      failedCodeAttempts >= 5 && Boolean(params.dismissCode);
     return (
       <ThemedView style={[styles.container, { backgroundColor: colors.error }]}>
         <View style={styles.content}>
@@ -174,6 +179,7 @@ export default function AlarmScreen() {
             codeLength={params.dismissCode?.length || 4}
             onSubmit={handleCodeSubmit}
             error={codeError}
+            hint={shouldRevealCode ? `Code: ${params.dismissCode}` : null}
             onCancel={handleCancelCodeEntry}
           />
         </View>
@@ -199,7 +205,7 @@ export default function AlarmScreen() {
           )}
           <TouchableOpacity
             style={[styles.cancelButton, { backgroundColor: colors.background }]}
-            onPress={() => setAlarmState('ringing')}
+            onPress={handleCancelNfcScan}
           >
             <ThemedText style={{ color: colors.error }}>Cancel</ThemedText>
           </TouchableOpacity>
@@ -229,8 +235,8 @@ export default function AlarmScreen() {
         )}
 
         <View style={styles.buttonContainer}>
-          {/* NFC Dismiss Button */}
-          {(params.dismissMethod === 'nfc' || params.dismissMethod === 'either') && (
+          {/* NFC Dismiss Button (iOS only) */}
+          {Platform.OS === 'ios' && (params.dismissMethod === 'nfc' || params.dismissMethod === 'either') && (
             <TouchableOpacity
               style={[styles.dismissButton, { backgroundColor: colors.background }]}
               onPress={handleNfcScan}
