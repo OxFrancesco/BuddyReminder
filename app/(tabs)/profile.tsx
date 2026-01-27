@@ -20,6 +20,8 @@ import { useSyncSettings } from "@/contexts/sync-settings-context";
 import { useCalendarSync } from "@/contexts/calendar-sync-context";
 import { SwipeableTab } from "@/components/swipeable-tab";
 import { useOAuth } from "@clerk/clerk-expo";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { useState } from "react";
 import { logger } from "@/lib/logger";
 
@@ -34,38 +36,24 @@ export default function TabTwoScreen() {
   const { startOAuthFlow } = useOAuth({
     strategy: "oauth_google",
   });
+  const checkCalendarScope = useAction(api.calendar.checkCalendarScope);
   const [isRequestingAccess, setIsRequestingAccess] = useState(false);
   const colors = Colors[colorScheme ?? "light"];
+  const googleAccount = user?.externalAccounts?.find(
+    (account) => account.provider === 'google'
+  );
 
-  const handleCalendarToggle = async (value: boolean) => {
-    if (!value) {
-      setCalendarSyncEnabled(false);
-      return;
-    }
-
-    // Check if user already has Google connected
-    const googleAccount = user?.externalAccounts?.find(
-      (account) => account.provider === 'google'
-    );
-
-    if (googleAccount) {
-      // User already has Google connected - just enable the toggle
-      // If they don't have calendar scope, sync will fail gracefully on backend
-      setCalendarSyncEnabled(true);
-      Alert.alert(
-        'Calendar Sync Enabled',
-        'If calendar sync fails, you may need to sign out and sign back in to grant calendar permissions.'
-      );
-      return;
-    }
-
-    // No Google account connected - start OAuth flow
+  const handleGoogleReconnect = async () => {
     try {
       setIsRequestingAccess(true);
       const { createdSessionId, setActive } = await startOAuthFlow();
       if (createdSessionId && setActive) {
         await setActive({ session: createdSessionId });
         setCalendarSyncEnabled(true);
+        Alert.alert(
+          'Google Reconnected',
+          'Calendar access has been refreshed. Your events will now sync both ways.'
+        );
       }
     } catch (error) {
       logger.error('Calendar access error:', error);
@@ -73,6 +61,41 @@ export default function TabTwoScreen() {
     } finally {
       setIsRequestingAccess(false);
     }
+  };
+
+  const handleCalendarToggle = async (value: boolean) => {
+    if (!value) {
+      setCalendarSyncEnabled(false);
+      return;
+    }
+
+    if (googleAccount) {
+      try {
+        const scopeResult = await checkCalendarScope({});
+        if (!scopeResult?.hasScope) {
+          Alert.alert(
+            'Calendar Access Required',
+            'Your Google account is connected, but calendar access is missing. Please reconnect to grant permissions.',
+            [
+              { text: 'Cancel', style: 'cancel' },
+              { text: 'Reconnect', onPress: handleGoogleReconnect },
+            ]
+          );
+          return;
+        }
+      } catch (error) {
+        logger.warn('Calendar scope check failed:', error);
+      }
+
+      setCalendarSyncEnabled(true);
+      Alert.alert(
+        'Calendar Sync Enabled',
+        'Your reminders and timed events will stay in sync with Google Calendar.'
+      );
+      return;
+    }
+
+    await handleGoogleReconnect();
   };
 
   return (
@@ -271,6 +294,16 @@ export default function TabTwoScreen() {
               }
             />
           </View>
+          {googleAccount && (
+            <TouchableOpacity
+              style={styles.reconnectRow}
+              onPress={handleGoogleReconnect}
+              disabled={isRequestingAccess}
+            >
+              <IconSymbol name="arrow.clockwise" size={18} color={colors.icon} />
+              <ThemedText style={styles.reconnectText}>Reconnect Google Calendar</ThemedText>
+            </TouchableOpacity>
+          )}
         </ThemedView>
 
         <View style={[styles.divider, { backgroundColor: colors.icon }]} />
@@ -392,5 +425,16 @@ const styles = StyleSheet.create({
     fontSize: 12,
     opacity: 0.7,
     marginTop: 2,
+  },
+  reconnectRow: {
+    marginTop: 12,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 8,
+  },
+  reconnectText: {
+    fontSize: 13,
+    opacity: 0.7,
   },
 });

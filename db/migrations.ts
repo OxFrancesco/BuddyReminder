@@ -15,7 +15,19 @@ export async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
       logger.info('Migration: Added googleCalendarEventId column');
     }
 
-    // Migration 2: Add alarmConfig column for alarm mode on reminders
+    // Migration 2: Add endAt column for calendar sync duration
+    const endAtResult = await db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM pragma_table_info('items') WHERE name='endAt'`
+    );
+
+    if (endAtResult?.count === 0) {
+      await db.execAsync(`
+        ALTER TABLE items ADD COLUMN endAt INTEGER;
+      `);
+      logger.info('Migration: Added endAt column');
+    }
+
+    // Migration 3: Add alarmConfig column for alarm mode on reminders
     const alarmResult = await db.getFirstAsync<{ count: number }>(
       `SELECT COUNT(*) as count FROM pragma_table_info('items') WHERE name='alarmConfig'`
     );
@@ -27,7 +39,7 @@ export async function migrateDatabase(db: SQLite.SQLiteDatabase): Promise<void> 
       logger.info('Migration: Added alarmConfig column');
     }
 
-    // Migration 3: Create nfcTags table for registered NFC tags
+    // Migration 4: Create nfcTags table for registered NFC tags
     await db.execAsync(`
       CREATE TABLE IF NOT EXISTS nfcTags (
         id TEXT PRIMARY KEY NOT NULL,

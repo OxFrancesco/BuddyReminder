@@ -44,6 +44,7 @@ const MAPPING = {
   "star.fill": "star",
   "clock.fill": "schedule",
   "trash.fill": "delete",
+  "arrow.clockwise": "refresh",
 } as IconMapping;
 
 /**

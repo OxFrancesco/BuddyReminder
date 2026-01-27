@@ -21,6 +21,7 @@ export const getUserItems = query({
       isPinned: v.optional(v.boolean()),
       isDailyHighlight: v.optional(v.boolean()),
       triggerAt: v.optional(v.number()),
+      endAt: v.optional(v.number()),
       timezone: v.optional(v.string()),
       repeatRule: v.optional(v.string()),
       updatedAt: v.optional(v.number()),
@@ -44,6 +45,7 @@ export const getUserItems = query({
       })),
       executionPolicy: v.optional(v.union(v.literal("manual"), v.literal("auto"))),
       agentRunIds: v.optional(v.array(v.string())),
+      googleCalendarEventId: v.optional(v.string()),
     })
   ),
   handler: async (ctx, args) => {
@@ -111,6 +113,7 @@ export const createItem = mutation({
     body: v.optional(v.string()),
     isPinned: v.optional(v.boolean()),
     triggerAt: v.optional(v.number()),
+    endAt: v.optional(v.number()),
     timezone: v.optional(v.string()),
     repeatRule: v.optional(v.string()),
     alarmConfig: v.optional(v.object({
@@ -146,6 +149,10 @@ export const createItem = mutation({
     }
 
     const now = Date.now();
+    const endAt =
+      args.endAt ??
+      (args.triggerAt !== undefined ? args.triggerAt + 3600000 : undefined);
+
     return await ctx.db.insert("items", {
       userId: user._id,
       type: args.type,
@@ -154,6 +161,7 @@ export const createItem = mutation({
       status: "open",
       isPinned: args.isPinned,
       triggerAt: args.triggerAt,
+      endAt,
       timezone: args.timezone,
       repeatRule: args.repeatRule,
       alarmConfig: args.alarmConfig,
@@ -173,6 +181,7 @@ export const updateItem = mutation({
     title: v.optional(v.string()),
     body: v.optional(v.string()),
     triggerAt: v.optional(v.number()),
+    endAt: v.optional(v.number()),
   },
   returns: v.null(),
   handler: async (ctx, args) => {
@@ -203,6 +212,7 @@ export const updateItem = mutation({
     if (args.title !== undefined) updates.title = args.title;
     if (args.body !== undefined) updates.body = args.body;
     if (args.triggerAt !== undefined) updates.triggerAt = args.triggerAt;
+    if (args.endAt !== undefined) updates.endAt = args.endAt;
 
     await ctx.db.patch(args.itemId, updates);
     return null;
@@ -221,6 +231,7 @@ export const updateItemFull = mutation({
     isPinned: v.optional(v.boolean()),
     isDailyHighlight: v.optional(v.boolean()),
     triggerAt: v.optional(v.number()),
+    endAt: v.optional(v.number()),
     timezone: v.optional(v.string()),
     repeatRule: v.optional(v.string()),
     snoozeState: v.optional(v.object({
@@ -275,6 +286,7 @@ export const updateItemFull = mutation({
     if (args.isPinned !== undefined) updates.isPinned = args.isPinned;
     if (args.isDailyHighlight !== undefined) updates.isDailyHighlight = args.isDailyHighlight;
     if (args.triggerAt !== undefined) updates.triggerAt = args.triggerAt;
+    if (args.endAt !== undefined) updates.endAt = args.endAt;
     if (args.timezone !== undefined) updates.timezone = args.timezone;
     if (args.repeatRule !== undefined) updates.repeatRule = args.repeatRule;
     if (args.snoozeState !== undefined) updates.snoozeState = args.snoozeState;

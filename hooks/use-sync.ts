@@ -5,6 +5,8 @@ import { useConvex } from 'convex/react';
 import { useAuth } from '@clerk/clerk-expo';
 import { useDatabaseReady } from '@/db/provider';
 import { useSyncSettings } from '@/contexts/sync-settings-context';
+import { useCalendarSync } from '@/contexts/calendar-sync-context';
+import { api } from '@/convex/_generated/api';
 import { syncAll, SyncResult } from '@/sync/sync-engine';
 import { subscribeToItemChanges, getPendingChanges } from '@/db/items-repository';
 import { logger } from '@/lib/logger';
@@ -19,6 +21,7 @@ interface SyncState {
 
 const SYNC_INTERVAL = 30000; // 30 seconds
 const SYNC_DEBOUNCE = 2000; // 2 seconds after change
+const CALENDAR_SYNC_INTERVAL = 120000; // 2 minutes
 
 export function useSync(): SyncState & {
   syncNow: () => Promise<SyncResult | null>;
@@ -27,6 +30,7 @@ export function useSync(): SyncState & {
   const { userId } = useAuth();
   const isDbReady = useDatabaseReady();
   const { isCloudSyncEnabled } = useSyncSettings();
+  const { calendarSyncEnabled } = useCalendarSync();
 
   const [state, setState] = useState<SyncState>({
     isSyncing: false,
@@ -41,8 +45,11 @@ export function useSync(): SyncState & {
   const isMountedRef = useRef(true);
   const isOnlineRef = useRef(state.isOnline);
   const isSyncingRef = useRef(state.isSyncing);
+  const isCalendarSyncingRef = useRef(false);
+  const lastCalendarSyncAtRef = useRef<number | null>(null);
   const userIdRef = useRef<string | null>(userId ?? null);
   const isDbReadyRef = useRef(isDbReady);
+  const calendarSyncEnabledRef = useRef(calendarSyncEnabled);
 
   useEffect(() => {
     isOnlineRef.current = state.isOnline;
@@ -57,10 +64,37 @@ export function useSync(): SyncState & {
   }, [userId]);
 
   useEffect(() => {
+    calendarSyncEnabledRef.current = calendarSyncEnabled;
+  }, [calendarSyncEnabled]);
+
+  useEffect(() => {
     isDbReadyRef.current = isDbReady;
   }, [isDbReady]);
 
   // Perform sync
+  const syncGoogleCalendarIfNeeded = useCallback(async () => {
+    if (!isCloudSyncEnabled || !calendarSyncEnabledRef.current) return;
+    if (isCalendarSyncingRef.current) return;
+
+    const now = Date.now();
+    const lastSyncAt = lastCalendarSyncAtRef.current ?? 0;
+    if (now - lastSyncAt < CALENDAR_SYNC_INTERVAL) return;
+
+    const currentUserId = userIdRef.current;
+    const currentIsOnline = isOnlineRef.current;
+    if (!currentUserId || !currentIsOnline) return;
+
+    isCalendarSyncingRef.current = true;
+    try {
+      await convex.action(api.calendar.syncFromGoogle, {});
+      lastCalendarSyncAtRef.current = Date.now();
+    } catch (error) {
+      logger.warn('[useSync] Google calendar sync failed', error);
+    } finally {
+      isCalendarSyncingRef.current = false;
+    }
+  }, [convex, isCloudSyncEnabled]);
+
   const performSync = useCallback(async (): Promise<SyncResult | null> => {
     const currentUserId = userIdRef.current;
     const currentIsDbReady = isDbReadyRef.current;
@@ -92,6 +126,7 @@ export function useSync(): SyncState & {
 
     try {
       const result = await syncAll(convex, currentUserId);
+      await syncGoogleCalendarIfNeeded();
       logger.debug('[useSync] Sync completed:', result);
 
       if (isMountedRef.current) {
@@ -117,7 +152,7 @@ export function useSync(): SyncState & {
     } finally {
       isSyncingRef.current = false;
     }
-  }, [convex, isCloudSyncEnabled]);
+  }, [convex, isCloudSyncEnabled, syncGoogleCalendarIfNeeded]);
 
   // Debounced sync on data change
   const scheduleDebouncedSync = useCallback(() => {

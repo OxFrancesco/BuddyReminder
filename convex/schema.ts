@@ -16,6 +16,7 @@ export default defineSchema({
     email: v.string(),
     name: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    googleCalendarSyncToken: v.optional(v.string()),
   }).index("by_clerk_id", ["clerkId"]),
 
   items: defineTable({
@@ -29,6 +30,7 @@ export default defineSchema({
 
     // Reminder fields
     triggerAt: v.optional(v.number()),
+    endAt: v.optional(v.number()),
     timezone: v.optional(v.string()),
     repeatRule: v.optional(v.string()),
     snoozeState: v.optional(v.object({

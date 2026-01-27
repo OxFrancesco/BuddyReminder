@@ -48,6 +48,7 @@ export interface LocalItem {
   isPinned: boolean;
   isDailyHighlight: boolean;
   triggerAt: number | null;
+  endAt: number | null;
   timezone: string | null;
   repeatRule: string | null;
   snoozeState: SnoozeState | null;
@@ -71,6 +72,7 @@ export interface CreateItemInput {
   isPinned?: boolean;
   isDailyHighlight?: boolean;
   triggerAt?: number;
+  endAt?: number;
   timezone?: string;
   repeatRule?: string;
   alarmConfig?: AlarmConfig;
@@ -85,6 +87,7 @@ export interface UpdateItemInput {
   isPinned?: boolean;
   isDailyHighlight?: boolean;
   triggerAt?: number;
+  endAt?: number | null;
   snoozeState?: SnoozeState | null;
   alarmConfig?: AlarmConfig | null;
   notificationId?: string | null;
