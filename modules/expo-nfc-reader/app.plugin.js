@@ -12,7 +12,6 @@ function withNfcReader(config) {
   // Add NFC entitlements
   config = withEntitlementsPlist(config, (config) => {
     config.modResults['com.apple.developer.nfc.readersession.formats'] = [
-      'NDEF',
       'TAG',
     ];
     return config;
