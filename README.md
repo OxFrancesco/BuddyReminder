@@ -3,6 +3,9 @@
 ## TL;DR
 Cross-platform mobile app for instant capture of notes, reminders, and AI-powered tasks. Capture in <3 seconds, delegate tasks to AI agents running in remote workspaces. Built with React Native + Expo, featuring lock screen widgets, smart reminders, and OpenCode agent integration for automated task execution.
 
+## Video Tutorial
+Watch the app in action: [BuddyReminder Tutorial](https://youtu.be/NN6TkqVYYRg)
+
 ## App Description
 
 ### Overview
